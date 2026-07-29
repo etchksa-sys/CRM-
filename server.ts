@@ -41,7 +41,7 @@ app.post("/api/ai/copilot", async (req, res) => {
     const fullPrompt = `${systemInstruction}\n\nContext Type: ${contextType || 'general'}\nData context: ${JSON.stringify(data || {})}\nUser Request: ${prompt}`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
+      model: 'gemini-2.5-flash',
       contents: fullPrompt,
     });
 

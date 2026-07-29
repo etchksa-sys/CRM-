@@ -22,7 +22,7 @@ import {
   STAGE_LABELS
 } from './data/mockData';
 import { isSupabaseConfigured } from './lib/supabase';
-import { fetchSupabaseData, syncItemToSupabase } from './lib/supabaseService';
+import { fetchSupabaseData, syncItemToSupabase, seedSupabaseData } from './lib/supabaseService';
 
 import { Sidebar } from './components/common/Sidebar';
 import { Header } from './components/common/Header';
@@ -140,34 +140,44 @@ export default function App() {
   // Load from Supabase if configured
   useEffect(() => {
     if (isSupabaseConfigured()) {
-      fetchSupabaseData().then((res) => {
+      fetchSupabaseData().then(async (res) => {
         if (res) {
-          if (res.contacts) setContacts(res.contacts);
-          if (res.deals) setDeals(res.deals);
-          if (res.tasks) setTasks(res.tasks);
+          if (res.contacts && res.contacts.length > 0) {
+            setContacts(res.contacts);
+          } else {
+            setContacts(initialContacts);
+            await seedSupabaseData({ 
+              contacts: initialContacts, 
+              deals: initialDeals, 
+              tasks: initialTasks, 
+              users: initialUsers, 
+              notifications: initialNotifications 
+            });
+          }
+
+          if (res.deals && res.deals.length > 0) {
+            setDeals(res.deals);
+          } else {
+            setDeals(initialDeals);
+          }
+
+          if (res.tasks && res.tasks.length > 0) {
+            setTasks(res.tasks);
+          } else {
+            setTasks(initialTasks);
+          }
+
           if (res.users && res.users.length > 0) {
             setUsers(res.users);
           } else {
-            const defaultAdmin: UserAccount = {
-              id: 'admin-1',
-              name: 'مدير النظام (Admin)',
-              email: 'admin@crmpro.com',
-              role: 'admin',
-              phone: '+966 50 000 0000',
-              avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
-              monthlyTarget: 1000000,
-              targetPeriod: 'yearly',
-              revenueGenerated: 0,
-              dealsCount: 0,
-              conversionRate: 100,
-              kpiScore: 100,
-              status: 'active',
-              canCreateUsers: true
-            };
-            setUsers([defaultAdmin]);
-            syncItemToSupabase('users', defaultAdmin, 'upsert');
+            setUsers(initialUsers);
           }
-          if (res.notifications) setNotifications(res.notifications);
+
+          if (res.notifications && res.notifications.length > 0) {
+            setNotifications(res.notifications);
+          } else {
+            setNotifications(initialNotifications);
+          }
         }
       });
     }

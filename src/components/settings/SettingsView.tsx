@@ -273,9 +273,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </p>
 
         <form onSubmit={handleSaveSupabase} className="space-y-4 pt-2">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" dir="ltr">
             <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 block" dir={language === 'ar' ? 'rtl' : 'ltr'}>
                 {language === 'en' ? 'Supabase Project URL' : 'رابط المشروع (Supabase URL)'}
               </label>
               <input
@@ -283,12 +283,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 value={supabaseUrl}
                 onChange={(e) => setSupabaseUrl(e.target.value)}
                 placeholder="https://xyzproject.supabase.co"
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-3 text-xs text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-3 text-xs text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none text-left"
               />
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 block" dir={language === 'ar' ? 'rtl' : 'ltr'}>
                 {language === 'en' ? 'Supabase Anon Key' : 'مفتاح الأمان (Anon / Public Key)'}
               </label>
               <input
@@ -296,7 +296,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 value={supabaseKey}
                 onChange={(e) => setSupabaseKey(e.target.value)}
                 placeholder="eyJhbGciOiJIUzI1NiIsInR5..."
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-3 text-xs text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-3 text-xs text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none text-left"
               />
             </div>
           </div>
