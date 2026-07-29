@@ -1,0 +1,506 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Contact, 
+  Deal, 
+  Task, 
+  UserAccount, 
+  NotificationItem, 
+  ViewType, 
+  DealStage, 
+  TimelineInteraction 
+} from './types';
+import { 
+  initialContacts, 
+  initialDeals, 
+  initialTasks, 
+  initialUsers, 
+  initialNotifications, 
+  initialMonthlyReports,
+  loadFromStorage, 
+  saveToStorage, 
+  STORAGE_KEYS,
+  STAGE_LABELS
+} from './data/mockData';
+
+import { Sidebar } from './components/common/Sidebar';
+import { Header } from './components/common/Header';
+import { QuickAddModal } from './components/common/QuickAddModal';
+import { AICopilotModal } from './components/common/AICopilotModal';
+import { ToastContainer, ToastMessage } from './components/common/Toast';
+import { Language } from './utils/i18n';
+
+import { DashboardView } from './components/dashboard/DashboardView';
+import { ContactsView } from './components/contacts/ContactsView';
+import { DealsKanbanView } from './components/deals/DealsKanbanView';
+import { TasksView } from './components/tasks/TasksView';
+import { ReportsView } from './components/reports/ReportsView';
+import { UsersView } from './components/users/UsersView';
+import { SettingsView } from './components/settings/SettingsView';
+import { AuthView } from './components/auth/AuthView';
+
+export default function App() {
+  // Theme State
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => 
+    loadFromStorage(STORAGE_KEYS.THEME, 'light')
+  );
+
+  // Language State
+  const [language, setLanguage] = useState<Language>(() => 
+    loadFromStorage(STORAGE_KEYS.LANGUAGE, 'ar')
+  );
+
+  // Auth State
+  const [authUser, setAuthUser] = useState<UserAccount | null>(() => 
+    loadFromStorage(STORAGE_KEYS.AUTH_USER, null)
+  );
+
+  // Navigation State
+  const [currentView, setCurrentView] = useState<ViewType>('dashboard');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [isAICopilotOpen, setIsAICopilotOpen] = useState(false);
+  const [quickAddTab, setQuickAddTab] = useState<'contact' | 'deal' | 'task'>('contact');
+
+  // Data States with LocalStorage Persistence
+  const [contacts, setContacts] = useState<Contact[]>(() => 
+    loadFromStorage(STORAGE_KEYS.CONTACTS, initialContacts)
+  );
+  const [deals, setDeals] = useState<Deal[]>(() => 
+    loadFromStorage(STORAGE_KEYS.DEALS, initialDeals)
+  );
+  const [tasks, setTasks] = useState<Task[]>(() => 
+    loadFromStorage(STORAGE_KEYS.TASKS, initialTasks)
+  );
+  const [users, setUsers] = useState<UserAccount[]>(() => 
+    loadFromStorage(STORAGE_KEYS.USERS, initialUsers)
+  );
+  const [notifications, setNotifications] = useState<NotificationItem[]>(() => 
+    loadFromStorage(STORAGE_KEYS.NOTIFICATIONS, initialNotifications)
+  );
+  const [monthlyReports] = useState(initialMonthlyReports);
+
+  // Toast State
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const triggerToast = (title: string, message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const newToast: ToastMessage = {
+      id: `toast-${Date.now()}-${Math.random()}`,
+      title,
+      message,
+      type
+    };
+    setToasts((prev) => [...prev, newToast]);
+  };
+
+  const dismissToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  // Sync to Storage on modifications
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.CONTACTS, contacts);
+  }, [contacts]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.DEALS, deals);
+  }, [deals]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.TASKS, tasks);
+  }, [tasks]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.USERS, users);
+  }, [users]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.NOTIFICATIONS, notifications);
+  }, [notifications]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.THEME, theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.LANGUAGE, language);
+    document.documentElement.dir = language === 'en' ? 'ltr' : 'rtl';
+    document.documentElement.lang = language;
+  }, [language]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+    triggerToast(
+      theme === 'light' ? 'تم تفعيل الوضع الليلي' : 'تم تفعيل الوضع النهاري',
+      'تم تغيير ألوان وتصميم الواجهة بما يتناسب مع رغبتك.',
+      'info'
+    );
+  };
+
+  const toggleLanguage = () => {
+    setLanguage((prev) => (prev === 'ar' ? 'en' : 'ar'));
+    triggerToast(
+      language === 'ar' ? 'Language switched to English 🌐' : 'تم التبديل إلى اللغة العربية 🌐',
+      language === 'ar' ? 'Interface language has been updated.' : 'تم تحديث لغة الواجهة وعرض القوائم.',
+      'info'
+    );
+  };
+
+  // Contact Handlers
+  const handleAddContact = (contactData: Omit<Contact, 'id' | 'createdAt' | 'timeline'>) => {
+    const newContact: Contact = {
+      ...contactData,
+      id: `c-${Date.now()}`,
+      createdAt: new Date().toISOString().split('T')[0],
+      timeline: [
+        {
+          id: `t-${Date.now()}`,
+          type: 'note',
+          title: 'تسجيل العميل لأول مرة في النظام',
+          details: 'تم إنشاء الحساب عبر واجهة إضافة العميل السريعة.',
+          date: new Date().toISOString().split('T')[0],
+          performedBy: contactData.assignedTo
+        }
+      ]
+    };
+    setContacts((prev) => [newContact, ...prev]);
+    triggerToast('تم إضافة العميل بنجاح 🎉', `تم إدراج "${newContact.name}" إلى سجل الحسابات والعملاء.`, 'success');
+  };
+
+  const handleDeleteContact = (contactId: string) => {
+    const target = contacts.find((c) => c.id === contactId);
+    setContacts((prev) => prev.filter((c) => c.id !== contactId));
+    if (target) {
+      triggerToast('تم حذف العميل', `تم حذف حساب العميل "${target.name}" من النظام.`, 'info');
+    }
+  };
+
+  const handleAddTimelineInteraction = (contactId: string, interaction: Omit<TimelineInteraction, 'id'>) => {
+    const newInter: TimelineInteraction = {
+      ...interaction,
+      id: `t-${Date.now()}`
+    };
+    setContacts((prev) =>
+      prev.map((c) =>
+        c.id === contactId
+          ? { ...c, timeline: [newInter, ...c.timeline] }
+          : c
+      )
+    );
+    triggerToast('تم تحديث التايم لاين ✨', `تم إضافة التفاعل الجديد بنجاح إلى سجل العميل.`, 'success');
+  };
+
+  // Deal Handlers
+  const handleAddDeal = (dealData: Omit<Deal, 'id'>) => {
+    const newDeal: Deal = {
+      ...dealData,
+      id: `d-${Date.now()}`
+    };
+    setDeals((prev) => [newDeal, ...prev]);
+
+    // Also add a notification
+    const newNotif: NotificationItem = {
+      id: `n-${Date.now()}`,
+      title: 'صفقة بيع جديدة 💼',
+      message: `تم إنشاء صفقة "${newDeal.title}" بقيمة ${newDeal.value.toLocaleString()} ر.س.`,
+      time: 'الآن',
+      read: false,
+      type: 'deal'
+    };
+    setNotifications((prev) => [newNotif, ...prev]);
+
+    triggerToast(
+      'تم إضافة الصفقة الجديدة بنجاح 💰',
+      `تم إدراج الصفقة في مرحلة "${STAGE_LABELS[newDeal.stage]}" بقيمة ${newDeal.value.toLocaleString()} ر.س.`,
+      'success'
+    );
+  };
+
+  const handleMoveDeal = (dealId: string, newStage: DealStage) => {
+    setDeals((prev) =>
+      prev.map((d) => {
+        if (d.id === dealId) {
+          const updated = { ...d, stage: newStage };
+          if (newStage === 'won') updated.probability = 100;
+          if (newStage === 'lost') updated.probability = 0;
+          return updated;
+        }
+        return d;
+      })
+    );
+
+    const target = deals.find((d) => d.id === dealId);
+    if (target) {
+      triggerToast(
+        'تم نقل الصفقة بنجاح 🚀',
+        `تم نقل "${target.title}" إلى مرحلة: ${STAGE_LABELS[newStage]}`,
+        newStage === 'won' ? 'success' : 'info'
+      );
+    }
+  };
+
+  // Task Handlers
+  const handleAddTask = (taskData: Omit<Task, 'id' | 'completed'>) => {
+    const newTask: Task = {
+      ...taskData,
+      id: `tsk-${Date.now()}`,
+      completed: false
+    };
+    setTasks((prev) => [newTask, ...prev]);
+    triggerToast('تم إضافة المهمة والتذكير 📌', `تمت جدولة مهمة "${newTask.title}" بتاريخ ${newTask.dueDate}.`, 'success');
+  };
+
+  const handleToggleTaskComplete = (taskId: string) => {
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.id === taskId) {
+          const newState = !t.completed;
+          triggerToast(
+            newState ? 'تم إنجاز المهمة! 🌟' : 'تمت إعادة المهمة كقيد الانتظار',
+            `المهمة "${t.title}" ${newState ? 'اكتملت الآن.' : 'أصبحت غير مكتملة.'}`,
+            newState ? 'success' : 'info'
+          );
+          return { ...t, completed: newState };
+        }
+        return t;
+      })
+    );
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    triggerToast('تم حذف المهمة', 'تم حذف التذكير من قائمة المهام.', 'info');
+  };
+
+  // User Handlers
+  const handleAddUser = (userData: Omit<UserAccount, 'id'>) => {
+    const newUser: UserAccount = {
+      ...userData,
+      id: `u-${Date.now()}`
+    };
+    setUsers((prev) => [...prev, newUser]);
+  };
+
+  const handleUpdateUser = (updatedUser: UserAccount) => {
+    setUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
+    if (authUser && authUser.id === updatedUser.id) {
+      setAuthUser(updatedUser);
+      saveToStorage(STORAGE_KEYS.AUTH_USER, updatedUser);
+    }
+  };
+
+  const handleDeleteUser = (userId: string) => {
+    setUsers((prev) => prev.filter((u) => u.id !== userId));
+    if (authUser && authUser.id === userId) {
+      setAuthUser(null);
+      localStorage.removeItem(STORAGE_KEYS.AUTH_USER);
+    }
+    triggerToast('تم حذف الموظف', 'تم إزالة حساب الموظف بنجاح من النظام.', 'info');
+  };
+
+  const handleLogin = (user: UserAccount) => {
+    setAuthUser(user);
+    saveToStorage(STORAGE_KEYS.AUTH_USER, user);
+  };
+
+  const handleLogout = () => {
+    setAuthUser(null);
+    localStorage.removeItem(STORAGE_KEYS.AUTH_USER);
+    triggerToast('تم تسجيل الخروج 🔒', 'تم خروجك من الحساب بنجاح، يمكنك تسجيل الدخول بحساب آخر أو تسجيل حساب جديد.', 'info');
+  };
+
+  // Notification Handlers
+  const handleMarkNotificationRead = (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+  };
+
+  const handleMarkAllNotificationsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    triggerToast('تم تعليم الإشعارات كمقروءة', 'تم تحديث مركز التنبيهات.', 'info');
+  };
+
+  const handleOpenQuickAdd = (tab: 'contact' | 'deal' | 'task' = 'contact') => {
+    setQuickAddTab(tab);
+    setIsQuickAddOpen(true);
+  };
+
+  if (!authUser) {
+    return (
+      <div className={`min-h-screen font-sans antialiased transition-colors duration-300 ${theme === 'dark' ? 'dark bg-slate-950 text-slate-100' : 'bg-slate-900 text-slate-100'}`} dir={language === 'ar' ? 'rtl' : 'ltr'}>
+        <AuthView
+          existingUsers={users}
+          onLogin={handleLogin}
+          onRegister={(newUser) => {
+            setUsers((prev) => [newUser, ...prev]);
+            handleLogin(newUser);
+          }}
+          onTriggerToast={triggerToast}
+          language={language}
+        />
+        <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      </div>
+    );
+  }
+
+  return (
+    <div className={`min-h-screen font-sans antialiased transition-colors duration-300 ${theme === 'dark' ? 'dark bg-slate-950 text-slate-100' : 'bg-slate-50/70 text-slate-900'}`} dir={language === 'ar' ? 'rtl' : 'ltr'}>
+      
+      <div className="flex min-h-screen">
+        {/* Right Sidebar */}
+        <Sidebar
+          currentView={currentView}
+          onSelectView={setCurrentView}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          currentUser={authUser || users[0]}
+          isOpenMobile={isMobileSidebarOpen}
+          onCloseMobile={() => setIsMobileSidebarOpen(false)}
+          onLogout={handleLogout}
+          language={language}
+          onToggleLanguage={toggleLanguage}
+        />
+
+        {/* Main Workspace Area */}
+        <div className="flex-1 flex flex-col min-w-0">
+          
+          {/* Top Sticky Navbar */}
+          <Header
+            currentView={currentView}
+            onSelectView={setCurrentView}
+            onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
+            onOpenQuickAdd={() => handleOpenQuickAdd('contact')}
+            onOpenAICopilot={() => setIsAICopilotOpen(true)}
+            contacts={contacts}
+            deals={deals}
+            tasks={tasks}
+            notifications={notifications}
+            onMarkNotificationRead={handleMarkNotificationRead}
+            onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
+            language={language}
+            onToggleLanguage={toggleLanguage}
+          />
+
+          {/* Dynamic Content View Area */}
+          <main className="flex-1 p-4 lg:p-8 max-w-7xl w-full mx-auto overflow-x-hidden">
+            {currentView === 'dashboard' && (
+              <DashboardView
+                contacts={contacts}
+                deals={deals}
+                tasks={tasks}
+                monthlyReports={monthlyReports}
+                onSelectView={setCurrentView}
+                onToggleTaskComplete={handleToggleTaskComplete}
+                onOpenQuickAdd={handleOpenQuickAdd}
+                language={language}
+              />
+            )}
+
+            {currentView === 'contacts' && (
+              <ContactsView
+                contacts={contacts}
+                onAddTimelineInteraction={handleAddTimelineInteraction}
+                onOpenQuickAdd={handleOpenQuickAdd}
+                onDeleteContact={handleDeleteContact}
+                language={language}
+              />
+            )}
+
+            {currentView === 'deals' && (
+              <DealsKanbanView
+                deals={deals}
+                onMoveDeal={handleMoveDeal}
+                onOpenQuickAdd={handleOpenQuickAdd}
+                users={users}
+                language={language}
+              />
+            )}
+
+            {currentView === 'tasks' && (
+              <TasksView
+                tasks={tasks}
+                onToggleTaskComplete={handleToggleTaskComplete}
+                onOpenQuickAdd={handleOpenQuickAdd}
+                onDeleteTask={handleDeleteTask}
+                users={users}
+                language={language}
+              />
+            )}
+
+            {currentView === 'reports' && (
+              <ReportsView
+                monthlyReports={monthlyReports}
+                users={users}
+                deals={deals}
+                contacts={contacts}
+                onTriggerToast={triggerToast}
+                language={language}
+              />
+            )}
+
+            {currentView === 'users' && (
+              <UsersView
+                users={users}
+                deals={deals}
+                currentUser={authUser || users[0]}
+                onAddUser={handleAddUser}
+                onUpdateUser={handleUpdateUser}
+                onDeleteUser={handleDeleteUser}
+                onTriggerToast={triggerToast}
+                language={language}
+              />
+            )}
+
+            {currentView === 'settings' && (
+              <SettingsView
+                theme={theme}
+                onToggleTheme={toggleTheme}
+                onTriggerToast={triggerToast}
+                deals={deals}
+                contacts={contacts}
+                users={users}
+                language={language}
+              />
+            )}
+          </main>
+
+          {/* Footer */}
+          <footer className="py-4 px-8 border-t border-slate-200 dark:border-slate-800 text-center text-xs text-slate-400 dark:text-slate-500">
+            {language === 'en' 
+              ? '© 2026 CRM Pro • Advanced Sales & Relationship Management • Designed with Bilingual & Dark Mode Support'
+              : '© 2026 CRM Pro • نظام متكامل لإدارة علاقات العملاء والمبيعات • مصمم بأسلوب Minimalist بدعم RTL والوضع الليلي'}
+          </footer>
+        </div>
+      </div>
+
+      {/* Floating Quick Add Modal */}
+      <QuickAddModal
+        isOpen={isQuickAddOpen}
+        onClose={() => setIsQuickAddOpen(false)}
+        onAddContact={handleAddContact}
+        onAddDeal={handleAddDeal}
+        onAddTask={handleAddTask}
+        contacts={contacts}
+        users={users}
+        initialTab={quickAddTab}
+        language={language}
+      />
+
+      {/* Gemini AI Sales Copilot Modal */}
+      <AICopilotModal
+        isOpen={isAICopilotOpen}
+        onClose={() => setIsAICopilotOpen(false)}
+        language={language}
+        onTriggerToast={triggerToast}
+      />
+
+      {/* Micro-interaction Toast Notifications Container */}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+    </div>
+  );
+}

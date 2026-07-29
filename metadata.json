@@ -1,0 +1,6 @@
+{
+  "name": "CRM System",
+  "description": "نظام إدارة علاقات العملاء والصفقات والتقارير بدعم كامل للغة العربية (RTL) والوضع الليلي",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
