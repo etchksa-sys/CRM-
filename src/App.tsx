@@ -63,21 +63,39 @@ export default function App() {
   const [isAICopilotOpen, setIsAICopilotOpen] = useState(false);
   const [quickAddTab, setQuickAddTab] = useState<'contact' | 'deal' | 'task'>('contact');
 
-  // Data States with LocalStorage Persistence
+  // Data States with Supabase or LocalStorage Persistence
   const [contacts, setContacts] = useState<Contact[]>(() => 
-    loadFromStorage(STORAGE_KEYS.CONTACTS, initialContacts)
+    isSupabaseConfigured() ? [] : loadFromStorage(STORAGE_KEYS.CONTACTS, initialContacts)
   );
   const [deals, setDeals] = useState<Deal[]>(() => 
-    loadFromStorage(STORAGE_KEYS.DEALS, initialDeals)
+    isSupabaseConfigured() ? [] : loadFromStorage(STORAGE_KEYS.DEALS, initialDeals)
   );
   const [tasks, setTasks] = useState<Task[]>(() => 
-    loadFromStorage(STORAGE_KEYS.TASKS, initialTasks)
+    isSupabaseConfigured() ? [] : loadFromStorage(STORAGE_KEYS.TASKS, initialTasks)
   );
-  const [users, setUsers] = useState<UserAccount[]>(() => 
-    loadFromStorage(STORAGE_KEYS.USERS, initialUsers)
-  );
+  const [users, setUsers] = useState<UserAccount[]>(() => {
+    if (isSupabaseConfigured()) {
+      return [{
+        id: 'admin-1',
+        name: 'مدير النظام (Admin)',
+        email: 'admin@crmpro.com',
+        role: 'admin',
+        phone: '+966 50 000 0000',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+        monthlyTarget: 1000000,
+        targetPeriod: 'yearly',
+        revenueGenerated: 0,
+        dealsCount: 0,
+        conversionRate: 100,
+        kpiScore: 100,
+        status: 'active',
+        canCreateUsers: true
+      }];
+    }
+    return loadFromStorage(STORAGE_KEYS.USERS, initialUsers);
+  });
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => 
-    loadFromStorage(STORAGE_KEYS.NOTIFICATIONS, initialNotifications)
+    isSupabaseConfigured() ? [] : loadFromStorage(STORAGE_KEYS.NOTIFICATIONS, initialNotifications)
   );
   const [monthlyReports] = useState(initialMonthlyReports);
 
@@ -124,11 +142,32 @@ export default function App() {
     if (isSupabaseConfigured()) {
       fetchSupabaseData().then((res) => {
         if (res) {
-          if (res.contacts && res.contacts.length > 0) setContacts(res.contacts);
-          if (res.deals && res.deals.length > 0) setDeals(res.deals);
-          if (res.tasks && res.tasks.length > 0) setTasks(res.tasks);
-          if (res.users && res.users.length > 0) setUsers(res.users);
-          if (res.notifications && res.notifications.length > 0) setNotifications(res.notifications);
+          if (res.contacts) setContacts(res.contacts);
+          if (res.deals) setDeals(res.deals);
+          if (res.tasks) setTasks(res.tasks);
+          if (res.users && res.users.length > 0) {
+            setUsers(res.users);
+          } else {
+            const defaultAdmin: UserAccount = {
+              id: 'admin-1',
+              name: 'مدير النظام (Admin)',
+              email: 'admin@crmpro.com',
+              role: 'admin',
+              phone: '+966 50 000 0000',
+              avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+              monthlyTarget: 1000000,
+              targetPeriod: 'yearly',
+              revenueGenerated: 0,
+              dealsCount: 0,
+              conversionRate: 100,
+              kpiScore: 100,
+              status: 'active',
+              canCreateUsers: true
+            };
+            setUsers([defaultAdmin]);
+            syncItemToSupabase('users', defaultAdmin, 'upsert');
+          }
+          if (res.notifications) setNotifications(res.notifications);
         }
       });
     }
@@ -184,13 +223,22 @@ export default function App() {
         }
       ]
     };
-    setContacts((prev) => [newContact, ...prev]);
+    setContacts((prev) => {
+      const updated = [newContact, ...prev];
+      if (isSupabaseConfigured()) {
+        syncItemToSupabase('contacts', newContact, 'upsert');
+      }
+      return updated;
+    });
     triggerToast('تم إضافة العميل بنجاح 🎉', `تم إدراج "${newContact.name}" إلى سجل الحسابات والعملاء.`, 'success');
   };
 
   const handleDeleteContact = (contactId: string) => {
     const target = contacts.find((c) => c.id === contactId);
     setContacts((prev) => prev.filter((c) => c.id !== contactId));
+    if (isSupabaseConfigured()) {
+      syncItemToSupabase('contacts', { id: contactId }, 'delete');
+    }
     if (target) {
       triggerToast('تم حذف العميل', `تم حذف حساب العميل "${target.name}" من النظام.`, 'info');
     }
@@ -201,13 +249,19 @@ export default function App() {
       ...interaction,
       id: `t-${Date.now()}`
     };
-    setContacts((prev) =>
-      prev.map((c) =>
-        c.id === contactId
-          ? { ...c, timeline: [newInter, ...c.timeline] }
-          : c
-      )
-    );
+    setContacts((prev) => {
+      const updated = prev.map((c) => {
+        if (c.id === contactId) {
+          const upContact = { ...c, timeline: [newInter, ...c.timeline] };
+          if (isSupabaseConfigured()) {
+            syncItemToSupabase('contacts', upContact, 'upsert');
+          }
+          return upContact;
+        }
+        return c;
+      });
+      return updated;
+    });
     triggerToast('تم تحديث التايم لاين ✨', `تم إضافة التفاعل الجديد بنجاح إلى سجل العميل.`, 'success');
   };
 
@@ -217,7 +271,13 @@ export default function App() {
       ...dealData,
       id: `d-${Date.now()}`
     };
-    setDeals((prev) => [newDeal, ...prev]);
+    setDeals((prev) => {
+      const updated = [newDeal, ...prev];
+      if (isSupabaseConfigured()) {
+        syncItemToSupabase('deals', newDeal, 'upsert');
+      }
+      return updated;
+    });
 
     // Also add a notification
     const newNotif: NotificationItem = {
@@ -228,7 +288,13 @@ export default function App() {
       read: false,
       type: 'deal'
     };
-    setNotifications((prev) => [newNotif, ...prev]);
+    setNotifications((prev) => {
+      const updated = [newNotif, ...prev];
+      if (isSupabaseConfigured()) {
+        syncItemToSupabase('notifications', newNotif, 'upsert');
+      }
+      return updated;
+    });
 
     triggerToast(
       'تم إضافة الصفقة الجديدة بنجاح 💰',
@@ -244,6 +310,9 @@ export default function App() {
           const updated = { ...d, stage: newStage };
           if (newStage === 'won') updated.probability = 100;
           if (newStage === 'lost') updated.probability = 0;
+          if (isSupabaseConfigured()) {
+            syncItemToSupabase('deals', updated, 'upsert');
+          }
           return updated;
         }
         return d;
@@ -267,7 +336,13 @@ export default function App() {
       id: `tsk-${Date.now()}`,
       completed: false
     };
-    setTasks((prev) => [newTask, ...prev]);
+    setTasks((prev) => {
+      const updated = [newTask, ...prev];
+      if (isSupabaseConfigured()) {
+        syncItemToSupabase('tasks', newTask, 'upsert');
+      }
+      return updated;
+    });
     triggerToast('تم إضافة المهمة والتذكير 📌', `تمت جدولة مهمة "${newTask.title}" بتاريخ ${newTask.dueDate}.`, 'success');
   };
 
@@ -276,12 +351,16 @@ export default function App() {
       prev.map((t) => {
         if (t.id === taskId) {
           const newState = !t.completed;
+          const updated = { ...t, completed: newState };
+          if (isSupabaseConfigured()) {
+            syncItemToSupabase('tasks', updated, 'upsert');
+          }
           triggerToast(
             newState ? 'تم إنجاز المهمة! 🌟' : 'تمت إعادة المهمة كقيد الانتظار',
             `المهمة "${t.title}" ${newState ? 'اكتملت الآن.' : 'أصبحت غير مكتملة.'}`,
             newState ? 'success' : 'info'
           );
-          return { ...t, completed: newState };
+          return updated;
         }
         return t;
       })
@@ -290,6 +369,9 @@ export default function App() {
 
   const handleDeleteTask = (taskId: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    if (isSupabaseConfigured()) {
+      syncItemToSupabase('tasks', { id: taskId }, 'delete');
+    }
     triggerToast('تم حذف المهمة', 'تم حذف التذكير من قائمة المهام.', 'info');
   };
 
@@ -299,11 +381,25 @@ export default function App() {
       ...userData,
       id: `u-${Date.now()}`
     };
-    setUsers((prev) => [...prev, newUser]);
+    setUsers((prev) => {
+      const updated = [...prev, newUser];
+      if (isSupabaseConfigured()) {
+        syncItemToSupabase('users', newUser, 'upsert');
+      }
+      return updated;
+    });
   };
 
   const handleUpdateUser = (updatedUser: UserAccount) => {
-    setUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
+    setUsers((prev) => prev.map((u) => {
+      if (u.id === updatedUser.id) {
+        if (isSupabaseConfigured()) {
+          syncItemToSupabase('users', updatedUser, 'upsert');
+        }
+        return updatedUser;
+      }
+      return u;
+    }));
     if (authUser && authUser.id === updatedUser.id) {
       setAuthUser(updatedUser);
       saveToStorage(STORAGE_KEYS.AUTH_USER, updatedUser);
@@ -312,6 +408,9 @@ export default function App() {
 
   const handleDeleteUser = (userId: string) => {
     setUsers((prev) => prev.filter((u) => u.id !== userId));
+    if (isSupabaseConfigured()) {
+      syncItemToSupabase('users', { id: userId }, 'delete');
+    }
     if (authUser && authUser.id === userId) {
       setAuthUser(null);
       localStorage.removeItem(STORAGE_KEYS.AUTH_USER);

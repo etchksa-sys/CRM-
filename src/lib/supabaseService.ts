@@ -1,6 +1,26 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 import { Contact, Deal, Task, UserAccount, NotificationItem } from '../types';
 
+const toSnakeCase = (obj: any) => {
+  if (!obj || typeof obj !== 'object') return obj;
+  const mapped: any = {};
+  for (const key of Object.keys(obj)) {
+    const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+    mapped[snakeKey] = obj[key];
+  }
+  return mapped;
+};
+
+const toCamelCase = (obj: any) => {
+  if (!obj || typeof obj !== 'object') return obj;
+  const mapped: any = {};
+  for (const key of Object.keys(obj)) {
+    const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+    mapped[camelKey] = obj[key];
+  }
+  return mapped;
+};
+
 export const fetchSupabaseData = async () => {
   if (!isSupabaseConfigured() || !supabase) {
     return null;
@@ -16,11 +36,11 @@ export const fetchSupabaseData = async () => {
     ]);
 
     return {
-      contacts: contactsRes.error ? null : contactsRes.data,
-      deals: dealsRes.error ? null : dealsRes.data,
-      tasks: tasksRes.error ? null : tasksRes.data,
-      users: usersRes.error ? null : usersRes.data,
-      notifications: notifsRes.error ? null : notifsRes.data,
+      contacts: contactsRes.error || !contactsRes.data ? null : contactsRes.data.map(toCamelCase),
+      deals: dealsRes.error || !dealsRes.data ? null : dealsRes.data.map(toCamelCase),
+      tasks: tasksRes.error || !tasksRes.data ? null : tasksRes.data.map(toCamelCase),
+      users: usersRes.error || !usersRes.data ? null : usersRes.data.map(toCamelCase),
+      notifications: notifsRes.error || !notifsRes.data ? null : notifsRes.data.map(toCamelCase),
     };
   } catch (err) {
     console.error('Supabase fetch error:', err);
@@ -33,7 +53,8 @@ export const syncItemToSupabase = async (tableName: string, item: any, action: '
 
   try {
     if (action === 'upsert') {
-      const { error } = await supabase.from(tableName).upsert(item);
+      const snakeItem = toSnakeCase(item);
+      const { error } = await supabase.from(tableName).upsert(snakeItem);
       if (error) {
         console.error(`Supabase upsert error in ${tableName}:`, error);
         return false;
@@ -63,19 +84,19 @@ export const seedSupabaseData = async (initialData: {
 
   try {
     if (initialData.contacts?.length) {
-      await supabase.from('contacts').upsert(initialData.contacts);
+      await supabase.from('contacts').upsert(initialData.contacts.map(toSnakeCase));
     }
     if (initialData.deals?.length) {
-      await supabase.from('deals').upsert(initialData.deals);
+      await supabase.from('deals').upsert(initialData.deals.map(toSnakeCase));
     }
     if (initialData.tasks?.length) {
-      await supabase.from('tasks').upsert(initialData.tasks);
+      await supabase.from('tasks').upsert(initialData.tasks.map(toSnakeCase));
     }
     if (initialData.users?.length) {
-      await supabase.from('users').upsert(initialData.users);
+      await supabase.from('users').upsert(initialData.users.map(toSnakeCase));
     }
     if (initialData.notifications?.length) {
-      await supabase.from('notifications').upsert(initialData.notifications);
+      await supabase.from('notifications').upsert(initialData.notifications.map(toSnakeCase));
     }
     return true;
   } catch (err) {
