@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from './supabase';
+import { getSupabaseClient, isSupabaseConfigured } from './supabase';
 import { Contact, Deal, Task, UserAccount, NotificationItem } from '../types';
 
 const toSnakeCase = (obj: any) => {
@@ -22,17 +22,21 @@ const toCamelCase = (obj: any) => {
 };
 
 export const fetchSupabaseData = async () => {
-  if (!isSupabaseConfigured() || !supabase) {
+  if (!isSupabaseConfigured()) {
+    return null;
+  }
+  const client = getSupabaseClient();
+  if (!client) {
     return null;
   }
 
   try {
     const [contactsRes, dealsRes, tasksRes, usersRes, notifsRes] = await Promise.all([
-      supabase.from('contacts').select('*'),
-      supabase.from('deals').select('*'),
-      supabase.from('tasks').select('*'),
-      supabase.from('users').select('*'),
-      supabase.from('notifications').select('*')
+      client.from('contacts').select('*'),
+      client.from('deals').select('*'),
+      client.from('tasks').select('*'),
+      client.from('users').select('*'),
+      client.from('notifications').select('*')
     ]);
 
     return {
@@ -49,18 +53,20 @@ export const fetchSupabaseData = async () => {
 };
 
 export const syncItemToSupabase = async (tableName: string, item: any, action: 'upsert' | 'delete', idKey = 'id') => {
-  if (!isSupabaseConfigured() || !supabase) return false;
+  if (!isSupabaseConfigured()) return false;
+  const client = getSupabaseClient();
+  if (!client) return false;
 
   try {
     if (action === 'upsert') {
       const snakeItem = toSnakeCase(item);
-      const { error } = await supabase.from(tableName).upsert(snakeItem);
+      const { error } = await client.from(tableName).upsert(snakeItem);
       if (error) {
         console.error(`Supabase upsert error in ${tableName}:`, error);
         return false;
       }
     } else if (action === 'delete') {
-      const { error } = await supabase.from(tableName).delete().eq(idKey, item[idKey]);
+      const { error } = await client.from(tableName).delete().eq(idKey, item[idKey]);
       if (error) {
         console.error(`Supabase delete error in ${tableName}:`, error);
         return false;
@@ -80,23 +86,25 @@ export const seedSupabaseData = async (initialData: {
   users: UserAccount[];
   notifications: NotificationItem[];
 }) => {
-  if (!isSupabaseConfigured() || !supabase) return false;
+  if (!isSupabaseConfigured()) return false;
+  const client = getSupabaseClient();
+  if (!client) return false;
 
   try {
     if (initialData.contacts?.length) {
-      await supabase.from('contacts').upsert(initialData.contacts.map(toSnakeCase));
+      await client.from('contacts').upsert(initialData.contacts.map(toSnakeCase));
     }
     if (initialData.deals?.length) {
-      await supabase.from('deals').upsert(initialData.deals.map(toSnakeCase));
+      await client.from('deals').upsert(initialData.deals.map(toSnakeCase));
     }
     if (initialData.tasks?.length) {
-      await supabase.from('tasks').upsert(initialData.tasks.map(toSnakeCase));
+      await client.from('tasks').upsert(initialData.tasks.map(toSnakeCase));
     }
     if (initialData.users?.length) {
-      await supabase.from('users').upsert(initialData.users.map(toSnakeCase));
+      await client.from('users').upsert(initialData.users.map(toSnakeCase));
     }
     if (initialData.notifications?.length) {
-      await supabase.from('notifications').upsert(initialData.notifications.map(toSnakeCase));
+      await client.from('notifications').upsert(initialData.notifications.map(toSnakeCase));
     }
     return true;
   } catch (err) {
