@@ -21,6 +21,8 @@ import {
   STORAGE_KEYS,
   STAGE_LABELS
 } from './data/mockData';
+import { isSupabaseConfigured } from './lib/supabase';
+import { fetchSupabaseData, syncItemToSupabase } from './lib/supabaseService';
 
 import { Sidebar } from './components/common/Sidebar';
 import { Header } from './components/common/Header';
@@ -116,6 +118,21 @@ export default function App() {
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.NOTIFICATIONS, notifications);
   }, [notifications]);
+
+  // Load from Supabase if configured
+  useEffect(() => {
+    if (isSupabaseConfigured()) {
+      fetchSupabaseData().then((res) => {
+        if (res) {
+          if (res.contacts && res.contacts.length > 0) setContacts(res.contacts);
+          if (res.deals && res.deals.length > 0) setDeals(res.deals);
+          if (res.tasks && res.tasks.length > 0) setTasks(res.tasks);
+          if (res.users && res.users.length > 0) setUsers(res.users);
+          if (res.notifications && res.notifications.length > 0) setNotifications(res.notifications);
+        }
+      });
+    }
+  }, []);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.THEME, theme);
