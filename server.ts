@@ -109,6 +109,9 @@ app.get("/api/supabase-config", (req, res) => {
   });
 });
 
+const DEFAULT_SUPABASE_URL = 'https://ufgjpnsxkyrgfzdspyei.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmZ2pwbnN4a3lyZ2Z6ZHNweWVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNTQwNjAsImV4cCI6MjEwMDczMDA2MH0.JzKyM0sS95t6nFe3qaU03NQa_NAewFcrfwzxkon_41w';
+
 async function startServer() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
@@ -125,8 +128,8 @@ async function startServer() {
         const filePath = path.join(distPath, 'index.html');
         if (fs.existsSync(filePath)) {
           let html = fs.readFileSync(filePath, 'utf-8');
-          const sbUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
-          const sbKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+          const sbUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
+          const sbKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
           html = html.replace('</head>', `<script>
             window.__SUPABASE_URL__ = "${sbUrl}";
             window.__SUPABASE_ANON_KEY__ = "${sbKey}";
@@ -152,8 +155,8 @@ async function startServer() {
     try {
       if (fs.existsSync(targetFile)) {
         let html = fs.readFileSync(targetFile, 'utf-8');
-        const sbUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
-        const sbKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+        const sbUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
+        const sbKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
         html = html.replace('</head>', `<script>
           window.__SUPABASE_URL__ = "${sbUrl}";
           window.__SUPABASE_ANON_KEY__ = "${sbKey}";
