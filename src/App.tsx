@@ -164,15 +164,36 @@ export default function App() {
       }
 
       if (configured) {
-        fetchSupabaseData().then((res) => {
+        fetchSupabaseData().then(async (res) => {
           if (res) {
-            setContacts(res.contacts || []);
-            setDeals(res.deals || []);
-            setTasks(res.tasks || []);
-            if (res.users && res.users.length > 0) {
-              setUsers(res.users);
+            let contactsList = res.contacts || [];
+            let dealsList = res.deals || [];
+            let tasksList = res.tasks || [];
+            let usersList = res.users || [];
+            let notifsList = res.notifications || [];
+
+            if (contactsList.length === 0 && dealsList.length === 0) {
+              contactsList = initialContacts;
+              dealsList = initialDeals;
+              tasksList = initialTasks;
+              usersList = initialUsers;
+              notifsList = initialNotifications;
+              await seedSupabaseData({
+                contacts: initialContacts,
+                deals: initialDeals,
+                tasks: initialTasks,
+                users: initialUsers,
+                notifications: initialNotifications
+              });
             }
-            setNotifications(res.notifications || []);
+
+            setContacts(contactsList);
+            setDeals(dealsList);
+            setTasks(tasksList);
+            if (usersList && usersList.length > 0) {
+              setUsers(usersList);
+            }
+            setNotifications(notifsList);
           }
         });
       }

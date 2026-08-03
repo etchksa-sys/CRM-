@@ -1,14 +1,24 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Get Supabase credentials automatically from Vite / Vercel environment variables or runtime injection
+// Get Supabase credentials automatically from Vite / Vercel environment variables, runtime injection, or localStorage
 export const getSupabaseConfig = () => {
   const meta = import.meta as any;
   const env = meta.env || {};
   const win = typeof window !== 'undefined' ? (window as any) : {};
+  const lsUrl = typeof window !== 'undefined' ? localStorage.getItem('supabase_url') : null;
+  const lsKey = typeof window !== 'undefined' ? localStorage.getItem('supabase_anon_key') : null;
   
-  const url = (env.VITE_SUPABASE_URL as string) || (env.SUPABASE_URL as string) || win.__SUPABASE_URL__ || '';
-  const anonKey = (env.VITE_SUPABASE_ANON_KEY as string) || (env.SUPABASE_ANON_KEY as string) || win.__SUPABASE_ANON_KEY__ || '';
+  const url = lsUrl || win.__SUPABASE_URL__ || (env.VITE_SUPABASE_URL as string) || (env.SUPABASE_URL as string) || '';
+  const anonKey = lsKey || win.__SUPABASE_ANON_KEY__ || (env.VITE_SUPABASE_ANON_KEY as string) || (env.SUPABASE_ANON_KEY as string) || '';
   return { url, anonKey };
+};
+
+export const saveSupabaseConfig = (url: string, anonKey: string) => {
+  if (typeof window !== 'undefined') {
+    if (url) localStorage.setItem('supabase_url', url.trim());
+    if (anonKey) localStorage.setItem('supabase_anon_key', anonKey.trim());
+  }
+  cachedClient = null;
 };
 
 let cachedClient: SupabaseClient | null = null;

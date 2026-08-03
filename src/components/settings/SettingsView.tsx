@@ -3,7 +3,7 @@ import { Settings as SettingsIcon, RefreshCw, Download, Upload, Moon, Sun, Globe
 import { resetAllStorageToDefaults } from '../../data/mockData';
 import { Deal, Contact, UserAccount, Task, NotificationItem } from '../../types';
 import { exportFullSystemToExcel } from '../../utils/excelExport';
-import { isSupabaseConfigured } from '../../lib/supabase';
+import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig } from '../../lib/supabase';
 import { seedSupabaseData } from '../../lib/supabaseService';
 
 interface SettingsViewProps {
@@ -109,6 +109,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [showSqlModal, setShowSqlModal] = useState(false);
   const [copiedSql, setCopiedSql] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
+  const currentCfg = getSupabaseConfig();
+  const [inputUrl, setInputUrl] = useState(currentCfg.url);
+  const [inputKey, setInputKey] = useState(currentCfg.anonKey);
+
+  const handleSaveSupabaseConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    saveSupabaseConfig(inputUrl, inputKey);
+    const connected = isSupabaseConfigured();
+    setSupabaseConnected(connected);
+    onTriggerToast(
+      connected ? (language === 'en' ? 'Supabase Connected! ☁️' : 'تم الاتصال بقاعدة بيانات Supabase بنجاح! ☁️') : (language === 'en' ? 'Invalid Credentials' : 'بيانات غير كافية'),
+      connected ? (language === 'en' ? 'Live PostgreSQL connection established.' : 'تم تفعيل الاتصال المباشر بقاعدة البيانات.') : (language === 'en' ? 'Please enter both URL and Anon Key.' : 'يرجى إدخال الرابط ومفتاح Anon Key بشكل صحيح.'),
+      connected ? 'success' : 'info'
+    );
+  };
 
   const handleSeedToSupabase = async () => {
     if (!isSupabaseConfigured()) {
@@ -256,8 +271,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <span className={`w-3 h-3 rounded-full ${supabaseConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
             <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
               {supabaseConnected 
-                ? (language === 'en' ? 'Supabase Status: Connected via Vercel Environment ✓' : 'حالة الاتصال: متصل بنجاح عبر متغيرات بيئة Vercel ✓') 
-                : (language === 'en' ? 'Status: Waiting for Vercel Environment Variables (VITE_SUPABASE_URL & VITE_SUPABASE_ANON_KEY)' : 'حالة الاتصال: في انتظار تعريف متغيرات Vercel (VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY)')}
+                ? (language === 'en' ? 'Supabase Status: Connected & Active ✓' : 'حالة الاتصال: متصل بقاعدة البيانات بنجاح ✓') 
+                : (language === 'en' ? 'Status: Enter Supabase URL & Anon Key below or configure in Vercel' : 'حالة الاتصال: أدخل رابط و مفتاح Supabase أدناه أو اربطها بمتغيرات Vercel')}
             </span>
           </div>
 
@@ -273,6 +288,43 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </button>
           )}
         </div>
+
+        {/* Manual Supabase Credentials Form */}
+        <form onSubmit={handleSaveSupabaseConfig} className="pt-3 border-t border-slate-100 dark:border-slate-700 space-y-3">
+          <h5 className="text-xs font-bold text-slate-700 dark:text-slate-200">
+            {language === 'en' ? 'Manual Supabase Configuration (Optional Browser Override)' : 'إعداد يدوي لبيانات Supabase (اختياري للاختبار الفوري)'}
+          </h5>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">Supabase Project URL</label>
+              <input
+                type="text"
+                value={inputUrl}
+                onChange={(e) => setInputUrl(e.target.value)}
+                placeholder="https://xyzproject.supabase.co"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">Supabase Anon Key</label>
+              <input
+                type="password"
+                value={inputKey}
+                onChange={(e) => setInputKey(e.target.value)}
+                placeholder="eyJhbGciOi..."
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm"
+            >
+              {language === 'en' ? 'Save & Connect Supabase' : 'حفظ والاتصال بقاعدة البيانات'}
+            </button>
+          </div>
+        </form>
       </div>
 
       {/* Section 1: Vercel Deployment Guide */}
