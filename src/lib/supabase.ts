@@ -1,11 +1,11 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Get Supabase credentials from literal Vite env or localStorage settings
+// Get Supabase credentials automatically from Vite / Vercel environment variables
 export const getSupabaseConfig = () => {
   const meta = import.meta as any;
   const env = meta.env || {};
-  const url = (env.VITE_SUPABASE_URL as string) || localStorage.getItem('crm_supabase_url') || '';
-  const anonKey = (env.VITE_SUPABASE_ANON_KEY as string) || localStorage.getItem('crm_supabase_key') || '';
+  const url = (env.VITE_SUPABASE_URL as string) || '';
+  const anonKey = (env.VITE_SUPABASE_ANON_KEY as string) || '';
   return { url, anonKey };
 };
 
@@ -38,10 +38,4 @@ export const supabase = getSupabaseClient();
 export const isSupabaseConfigured = () => {
   const { url, anonKey } = getSupabaseConfig();
   return Boolean(url && anonKey);
-};
-
-export const saveSupabaseConfig = (url: string, key: string) => {
-  localStorage.setItem('crm_supabase_url', url.trim());
-  localStorage.setItem('crm_supabase_key', key.trim());
-  window.location.reload();
 };
