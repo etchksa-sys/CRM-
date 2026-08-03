@@ -24,75 +24,106 @@ const SUPABASE_SQL_CODE = `-- ==================================================
 -- (Dashboard -> SQL Editor -> New Query -> Paste & Run)
 -- ==========================================================
 
-CREATE TABLE IF NOT EXISTS contacts (
+-- 1. Contacts Table
+CREATE TABLE IF NOT EXISTS public.contacts (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
+  company TEXT,
   email TEXT,
   phone TEXT,
-  company TEXT,
+  source TEXT,
   status TEXT,
-  value NUMERIC,
-  created_at TEXT,
+  tags JSONB DEFAULT '[]'::jsonb,
   avatar TEXT,
   assigned_to TEXT,
-  tags JSONB,
-  notes JSONB
+  created_at TEXT,
+  notes TEXT,
+  timeline JSONB DEFAULT '[]'::jsonb
 );
 
-CREATE TABLE IF NOT EXISTS deals (
+-- 2. Deals Table
+CREATE TABLE IF NOT EXISTS public.deals (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
+  contact_id TEXT,
+  contact_name TEXT,
   company TEXT,
-  value NUMERIC,
+  value NUMERIC DEFAULT 0,
+  probability INT4 DEFAULT 50,
   stage TEXT,
-  probability INTEGER,
   expected_close_date TEXT,
-  contact_id TEXT,
   assigned_to TEXT,
-  notes JSONB
+  priority TEXT,
+  notes TEXT
 );
 
-CREATE TABLE IF NOT EXISTS tasks (
+-- 3. Tasks Table
+CREATE TABLE IF NOT EXISTS public.tasks (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
-  description TEXT,
   due_date TEXT,
+  due_time TEXT,
   priority TEXT,
-  completed BOOLEAN,
-  deal_id TEXT,
-  contact_id TEXT,
+  completed BOOLEAN DEFAULT false,
+  related_to_type TEXT,
+  related_to_id TEXT,
+  related_to_name TEXT,
   assigned_to TEXT
 );
 
-CREATE TABLE IF NOT EXISTS users (
+-- 4. Users Table
+CREATE TABLE IF NOT EXISTS public.users (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  email TEXT,
   role TEXT,
+  email TEXT,
+  phone TEXT,
   avatar TEXT,
-  active BOOLEAN
+  deals_count INT4 DEFAULT 0,
+  revenue_generated NUMERIC DEFAULT 0,
+  conversion_rate NUMERIC DEFAULT 100,
+  status TEXT DEFAULT 'active',
+  monthly_target NUMERIC,
+  target_period TEXT,
+  kpi_score NUMERIC DEFAULT 100,
+  last_active_date TEXT,
+  manager_feedback TEXT,
+  stagnant_deals_count INT4 DEFAULT 0,
+  can_create_users BOOLEAN DEFAULT true
 );
 
-CREATE TABLE IF NOT EXISTS notifications (
+-- 5. Notifications Table
+CREATE TABLE IF NOT EXISTS public.notifications (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   message TEXT,
-  timestamp TEXT,
-  read BOOLEAN,
-  type TEXT
+  time TEXT,
+  read BOOLEAN DEFAULT false,
+  type TEXT,
+  link_target TEXT
 );
 
-ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE deals ENABLE ROW LEVEL SECURITY;
-ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+-- Enable Row Level Security (RLS) and grant full public access for anon role
+ALTER TABLE public.contacts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.deals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Enable all access for contacts" ON contacts FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for deals" ON deals FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for tasks" ON tasks FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for users" ON users FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Enable all access for notifications" ON notifications FOR ALL USING (true) WITH CHECK (true);`;
+DROP POLICY IF EXISTS "Allow anon all on contacts" ON public.contacts;
+CREATE POLICY "Allow anon all on contacts" ON public.contacts FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon all on deals" ON public.deals;
+CREATE POLICY "Allow anon all on deals" ON public.deals FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon all on tasks" ON public.tasks;
+CREATE POLICY "Allow anon all on tasks" ON public.tasks FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon all on users" ON public.users;
+CREATE POLICY "Allow anon all on users" ON public.users FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon all on notifications" ON public.notifications;
+CREATE POLICY "Allow anon all on notifications" ON public.notifications FOR ALL USING (true) WITH CHECK (true);`;
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
   theme,

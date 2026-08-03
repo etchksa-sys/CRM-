@@ -52,10 +52,15 @@ export const fetchSupabaseData = async () => {
   }
 };
 
-export const syncItemToSupabase = async (tableName: string, item: any, action: 'upsert' | 'delete', idKey = 'id') => {
-  if (!isSupabaseConfigured()) return false;
+export const syncItemToSupabase = async (
+  tableName: string, 
+  item: any, 
+  action: 'upsert' | 'delete', 
+  idKey = 'id'
+): Promise<{ success: boolean; error?: string }> => {
+  if (!isSupabaseConfigured()) return { success: false, error: 'Supabase is not configured' };
   const client = getSupabaseClient();
-  if (!client) return false;
+  if (!client) return { success: false, error: 'Could not initialize Supabase client' };
 
   try {
     if (action === 'upsert') {
@@ -63,19 +68,19 @@ export const syncItemToSupabase = async (tableName: string, item: any, action: '
       const { error } = await client.from(tableName).upsert(snakeItem);
       if (error) {
         console.error(`Supabase upsert error in ${tableName}:`, error);
-        return false;
+        return { success: false, error: error.message || JSON.stringify(error) };
       }
     } else if (action === 'delete') {
       const { error } = await client.from(tableName).delete().eq(idKey, item[idKey]);
       if (error) {
         console.error(`Supabase delete error in ${tableName}:`, error);
-        return false;
+        return { success: false, error: error.message || JSON.stringify(error) };
       }
     }
-    return true;
-  } catch (err) {
+    return { success: true };
+  } catch (err: any) {
     console.error(`Supabase sync exception in ${tableName}:`, err);
-    return false;
+    return { success: false, error: err?.message || 'Unknown network error' };
   }
 };
 

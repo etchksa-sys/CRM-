@@ -164,36 +164,15 @@ export default function App() {
       }
 
       if (configured) {
-        fetchSupabaseData().then(async (res) => {
+        fetchSupabaseData().then((res) => {
           if (res) {
-            let contactsList = res.contacts || [];
-            let dealsList = res.deals || [];
-            let tasksList = res.tasks || [];
-            let usersList = res.users || [];
-            let notifsList = res.notifications || [];
-
-            if (contactsList.length === 0 && dealsList.length === 0) {
-              contactsList = initialContacts;
-              dealsList = initialDeals;
-              tasksList = initialTasks;
-              usersList = initialUsers;
-              notifsList = initialNotifications;
-              await seedSupabaseData({
-                contacts: initialContacts,
-                deals: initialDeals,
-                tasks: initialTasks,
-                users: initialUsers,
-                notifications: initialNotifications
-              });
+            setContacts(res.contacts || []);
+            setDeals(res.deals || []);
+            setTasks(res.tasks || []);
+            if (res.users && res.users.length > 0) {
+              setUsers(res.users);
             }
-
-            setContacts(contactsList);
-            setDeals(dealsList);
-            setTasks(tasksList);
-            if (usersList && usersList.length > 0) {
-              setUsers(usersList);
-            }
-            setNotifications(notifsList);
+            setNotifications(res.notifications || []);
           }
         });
       }
@@ -235,7 +214,7 @@ export default function App() {
   };
 
   // Contact Handlers
-  const handleAddContact = (contactData: Omit<Contact, 'id' | 'createdAt' | 'timeline'>) => {
+  const handleAddContact = async (contactData: Omit<Contact, 'id' | 'createdAt' | 'timeline'>) => {
     const newContact: Contact = {
       ...contactData,
       id: `c-${Date.now()}`,
@@ -251,63 +230,69 @@ export default function App() {
         }
       ]
     };
-    setContacts((prev) => {
-      const updated = [newContact, ...prev];
-      if (isSupabaseConfigured()) {
-        syncItemToSupabase('contacts', newContact, 'upsert');
+    setContacts((prev) => [newContact, ...prev]);
+
+    if (isSupabaseConfigured()) {
+      const res = await syncItemToSupabase('contacts', newContact, 'upsert');
+      if (!res.success) {
+        triggerToast('خطأ المزامنة مع Supabase ⚠️', `فشل حفظ العميل: ${res.error}`, 'info');
+      } else {
+        triggerToast('تم إضافة العميل بنجاح 🎉', `تم حفظ العميل "${newContact.name}" في Supabase بنجاح.`, 'success');
+        return;
       }
-      return updated;
-    });
-    triggerToast('تم إضافة العميل بنجاح 🎉', `تم إدراج "${newContact.name}" إلى سجل الحسابات والعملاء.`, 'success');
+    } else {
+      triggerToast('تم إضافة العميل محلياً 🎉', `تم إدراج "${newContact.name}" إلى سجل العملاء.`, 'success');
+    }
   };
 
-  const handleDeleteContact = (contactId: string) => {
+  const handleDeleteContact = async (contactId: string) => {
     const target = contacts.find((c) => c.id === contactId);
     setContacts((prev) => prev.filter((c) => c.id !== contactId));
     if (isSupabaseConfigured()) {
-      syncItemToSupabase('contacts', { id: contactId }, 'delete');
+      const res = await syncItemToSupabase('contacts', { id: contactId }, 'delete');
+      if (!res.success) {
+        triggerToast('خطأ Supabase ⚠️', `فشل حذف العميل من قاعدة البيانات: ${res.error}`, 'info');
+      }
     }
     if (target) {
       triggerToast('تم حذف العميل', `تم حذف حساب العميل "${target.name}" من النظام.`, 'info');
     }
   };
 
-  const handleAddTimelineInteraction = (contactId: string, interaction: Omit<TimelineInteraction, 'id'>) => {
+  const handleAddTimelineInteraction = async (contactId: string, interaction: Omit<TimelineInteraction, 'id'>) => {
     const newInter: TimelineInteraction = {
       ...interaction,
       id: `t-${Date.now()}`
     };
+    let updatedContact: Contact | undefined;
     setContacts((prev) => {
-      const updated = prev.map((c) => {
+      return prev.map((c) => {
         if (c.id === contactId) {
-          const upContact = { ...c, timeline: [newInter, ...c.timeline] };
-          if (isSupabaseConfigured()) {
-            syncItemToSupabase('contacts', upContact, 'upsert');
-          }
-          return upContact;
+          const up = { ...c, timeline: [newInter, ...(c.timeline || [])] };
+          updatedContact = up;
+          return up;
         }
         return c;
       });
-      return updated;
     });
+
+    if (updatedContact && isSupabaseConfigured()) {
+      const res = await syncItemToSupabase('contacts', updatedContact, 'upsert');
+      if (!res.success) {
+        triggerToast('خطأ Supabase ⚠️', `فشل تحديث سجل العميل: ${res.error}`, 'info');
+      }
+    }
     triggerToast('تم تحديث التايم لاين ✨', `تم إضافة التفاعل الجديد بنجاح إلى سجل العميل.`, 'success');
   };
 
   // Deal Handlers
-  const handleAddDeal = (dealData: Omit<Deal, 'id'>) => {
+  const handleAddDeal = async (dealData: Omit<Deal, 'id'>) => {
     const newDeal: Deal = {
       ...dealData,
       id: `d-${Date.now()}`
     };
-    setDeals((prev) => {
-      const updated = [newDeal, ...prev];
-      if (isSupabaseConfigured()) {
-        syncItemToSupabase('deals', newDeal, 'upsert');
-      }
-      return updated;
-    });
+    setDeals((prev) => [newDeal, ...prev]);
 
-    // Also add a notification
     const newNotif: NotificationItem = {
       id: `n-${Date.now()}`,
       title: 'صفقة بيع جديدة 💼',
@@ -316,128 +301,135 @@ export default function App() {
       read: false,
       type: 'deal'
     };
-    setNotifications((prev) => {
-      const updated = [newNotif, ...prev];
-      if (isSupabaseConfigured()) {
-        syncItemToSupabase('notifications', newNotif, 'upsert');
-      }
-      return updated;
-    });
+    setNotifications((prev) => [newNotif, ...prev]);
 
-    triggerToast(
-      'تم إضافة الصفقة الجديدة بنجاح 💰',
-      `تم إدراج الصفقة في مرحلة "${STAGE_LABELS[newDeal.stage]}" بقيمة ${newDeal.value.toLocaleString()} ر.س.`,
-      'success'
-    );
+    if (isSupabaseConfigured()) {
+      const res = await syncItemToSupabase('deals', newDeal, 'upsert');
+      await syncItemToSupabase('notifications', newNotif, 'upsert');
+      if (!res.success) {
+        triggerToast('خطأ المزامنة مع Supabase ⚠️', `فشل حفظ الصفقة في قاعدة البيانات: ${res.error}`, 'info');
+      } else {
+        triggerToast('تم إضافة الصفقة والمزامنة 💰', `تم إدراج الصفقة وحفظها في Supabase بنجاح.`, 'success');
+        return;
+      }
+    } else {
+      triggerToast('تم إضافة الصفقة جديدة 💰', `تم إدراج الصفقة بنجاح.`, 'success');
+    }
   };
 
-  const handleMoveDeal = (dealId: string, newStage: DealStage) => {
+  const handleMoveDeal = async (dealId: string, newStage: DealStage) => {
+    let targetDeal: Deal | undefined;
     setDeals((prev) =>
       prev.map((d) => {
         if (d.id === dealId) {
           const updated = { ...d, stage: newStage };
           if (newStage === 'won') updated.probability = 100;
           if (newStage === 'lost') updated.probability = 0;
-          if (isSupabaseConfigured()) {
-            syncItemToSupabase('deals', updated, 'upsert');
-          }
+          targetDeal = updated;
           return updated;
         }
         return d;
       })
     );
 
-    const target = deals.find((d) => d.id === dealId);
-    if (target) {
+    if (targetDeal && isSupabaseConfigured()) {
+      const res = await syncItemToSupabase('deals', targetDeal, 'upsert');
+      if (!res.success) {
+        triggerToast('خطأ Supabase ⚠️', `فشل تحديث مرحلة الصفقة: ${res.error}`, 'info');
+      }
+    }
+
+    if (targetDeal) {
       triggerToast(
         'تم نقل الصفقة بنجاح 🚀',
-        `تم نقل "${target.title}" إلى مرحلة: ${STAGE_LABELS[newStage]}`,
+        `تم نقل "${targetDeal.title}" إلى مرحلة: ${STAGE_LABELS[newStage]}`,
         newStage === 'won' ? 'success' : 'info'
       );
     }
   };
 
   // Task Handlers
-  const handleAddTask = (taskData: Omit<Task, 'id' | 'completed'>) => {
+  const handleAddTask = async (taskData: Omit<Task, 'id' | 'completed'>) => {
     const newTask: Task = {
       ...taskData,
       id: `tsk-${Date.now()}`,
       completed: false
     };
-    setTasks((prev) => {
-      const updated = [newTask, ...prev];
-      if (isSupabaseConfigured()) {
-        syncItemToSupabase('tasks', newTask, 'upsert');
+    setTasks((prev) => [newTask, ...prev]);
+
+    if (isSupabaseConfigured()) {
+      const res = await syncItemToSupabase('tasks', newTask, 'upsert');
+      if (!res.success) {
+        triggerToast('خطأ Supabase ⚠️', `فشل حفظ المهمة: ${res.error}`, 'info');
       }
-      return updated;
-    });
+    }
     triggerToast('تم إضافة المهمة والتذكير 📌', `تمت جدولة مهمة "${newTask.title}" بتاريخ ${newTask.dueDate}.`, 'success');
   };
 
-  const handleToggleTaskComplete = (taskId: string) => {
+  const handleToggleTaskComplete = async (taskId: string) => {
+    let updatedTask: Task | undefined;
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id === taskId) {
-          const newState = !t.completed;
-          const updated = { ...t, completed: newState };
-          if (isSupabaseConfigured()) {
-            syncItemToSupabase('tasks', updated, 'upsert');
-          }
-          triggerToast(
-            newState ? 'تم إنجاز المهمة! 🌟' : 'تمت إعادة المهمة كقيد الانتظار',
-            `المهمة "${t.title}" ${newState ? 'اكتملت الآن.' : 'أصبحت غير مكتملة.'}`,
-            newState ? 'success' : 'info'
-          );
-          return updated;
+          const up = { ...t, completed: !t.completed };
+          updatedTask = up;
+          return up;
         }
         return t;
       })
     );
+
+    if (updatedTask && isSupabaseConfigured()) {
+      await syncItemToSupabase('tasks', updatedTask, 'upsert');
+    }
+
+    if (updatedTask) {
+      triggerToast(
+        updatedTask.completed ? 'تم إنجاز المهمة! 🌟' : 'تمت إعادة المهمة كقيد الانتظار',
+        `المهمة "${updatedTask.title}" ${updatedTask.completed ? 'اكتملت الآن.' : 'أصبحت غير مكتملة.'}`,
+        updatedTask.completed ? 'success' : 'info'
+      );
+    }
   };
 
-  const handleDeleteTask = (taskId: string) => {
+  const handleDeleteTask = async (taskId: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
     if (isSupabaseConfigured()) {
-      syncItemToSupabase('tasks', { id: taskId }, 'delete');
+      await syncItemToSupabase('tasks', { id: taskId }, 'delete');
     }
     triggerToast('تم حذف المهمة', 'تم حذف التذكير من قائمة المهام.', 'info');
   };
 
   // User Handlers
-  const handleAddUser = (userData: Omit<UserAccount, 'id'>) => {
+  const handleAddUser = async (userData: Omit<UserAccount, 'id'>) => {
     const newUser: UserAccount = {
       ...userData,
       id: `u-${Date.now()}`
     };
-    setUsers((prev) => {
-      const updated = [...prev, newUser];
-      if (isSupabaseConfigured()) {
-        syncItemToSupabase('users', newUser, 'upsert');
+    setUsers((prev) => [...prev, newUser]);
+    if (isSupabaseConfigured()) {
+      const res = await syncItemToSupabase('users', newUser, 'upsert');
+      if (!res.success) {
+        triggerToast('خطأ Supabase ⚠️', `فشل حفظ الموظف: ${res.error}`, 'info');
       }
-      return updated;
-    });
+    }
   };
 
-  const handleUpdateUser = (updatedUser: UserAccount) => {
-    setUsers((prev) => prev.map((u) => {
-      if (u.id === updatedUser.id) {
-        if (isSupabaseConfigured()) {
-          syncItemToSupabase('users', updatedUser, 'upsert');
-        }
-        return updatedUser;
-      }
-      return u;
-    }));
+  const handleUpdateUser = async (updatedUser: UserAccount) => {
+    setUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
+    if (isSupabaseConfigured()) {
+      await syncItemToSupabase('users', updatedUser, 'upsert');
+    }
     if (authUser && authUser.id === updatedUser.id) {
       setAuthUser(updatedUser);
       saveToStorage(STORAGE_KEYS.AUTH_USER, updatedUser);
     }
   };
 
-  const handleDeleteUser = (userId: string) => {
+  const handleDeleteUser = async (userId: string) => {
     setUsers((prev) => prev.filter((u) => u.id !== userId));
     if (isSupabaseConfigured()) {
-      syncItemToSupabase('users', { id: userId }, 'delete');
+      await syncItemToSupabase('users', { id: userId }, 'delete');
     }
     if (authUser && authUser.id === userId) {
       setAuthUser(null);
