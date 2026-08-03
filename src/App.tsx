@@ -63,15 +63,17 @@ export default function App() {
   const [isAICopilotOpen, setIsAICopilotOpen] = useState(false);
   const [quickAddTab, setQuickAddTab] = useState<'contact' | 'deal' | 'task'>('contact');
 
-  // Data States with Supabase or LocalStorage Persistence
+  const userId = authUser?.id || 'default';
+
+  // Data States with User-Specific LocalStorage or Supabase Persistence
   const [contacts, setContacts] = useState<Contact[]>(() => 
-    isSupabaseConfigured() ? [] : loadFromStorage(STORAGE_KEYS.CONTACTS, initialContacts)
+    isSupabaseConfigured() ? [] : loadFromStorage(`${STORAGE_KEYS.CONTACTS}_${userId}`, initialContacts)
   );
   const [deals, setDeals] = useState<Deal[]>(() => 
-    isSupabaseConfigured() ? [] : loadFromStorage(STORAGE_KEYS.DEALS, initialDeals)
+    isSupabaseConfigured() ? [] : loadFromStorage(`${STORAGE_KEYS.DEALS}_${userId}`, initialDeals)
   );
   const [tasks, setTasks] = useState<Task[]>(() => 
-    isSupabaseConfigured() ? [] : loadFromStorage(STORAGE_KEYS.TASKS, initialTasks)
+    isSupabaseConfigured() ? [] : loadFromStorage(`${STORAGE_KEYS.TASKS}_${userId}`, initialTasks)
   );
   const [users, setUsers] = useState<UserAccount[]>(() => {
     if (isSupabaseConfigured()) {
@@ -95,7 +97,7 @@ export default function App() {
     return loadFromStorage(STORAGE_KEYS.USERS, initialUsers);
   });
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => 
-    isSupabaseConfigured() ? [] : loadFromStorage(STORAGE_KEYS.NOTIFICATIONS, initialNotifications)
+    isSupabaseConfigured() ? [] : loadFromStorage(`${STORAGE_KEYS.NOTIFICATIONS}_${userId}`, initialNotifications)
   );
   const [monthlyReports] = useState(initialMonthlyReports);
 
@@ -116,26 +118,45 @@ export default function App() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Sync to Storage on modifications
+  // Reload data when active user changes
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.CONTACTS, contacts);
-  }, [contacts]);
+    if (!isSupabaseConfigured()) {
+      const uid = authUser?.id || 'default';
+      setContacts(loadFromStorage(`${STORAGE_KEYS.CONTACTS}_${uid}`, initialContacts));
+      setDeals(loadFromStorage(`${STORAGE_KEYS.DEALS}_${uid}`, initialDeals));
+      setTasks(loadFromStorage(`${STORAGE_KEYS.TASKS}_${uid}`, initialTasks));
+      setNotifications(loadFromStorage(`${STORAGE_KEYS.NOTIFICATIONS}_${uid}`, initialNotifications));
+    }
+  }, [authUser?.id]);
+
+  // Sync to User-Specific Storage on modifications
+  useEffect(() => {
+    if (!isSupabaseConfigured()) {
+      saveToStorage(`${STORAGE_KEYS.CONTACTS}_${userId}`, contacts);
+    }
+  }, [contacts, userId]);
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.DEALS, deals);
-  }, [deals]);
+    if (!isSupabaseConfigured()) {
+      saveToStorage(`${STORAGE_KEYS.DEALS}_${userId}`, deals);
+    }
+  }, [deals, userId]);
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.TASKS, tasks);
-  }, [tasks]);
+    if (!isSupabaseConfigured()) {
+      saveToStorage(`${STORAGE_KEYS.TASKS}_${userId}`, tasks);
+    }
+  }, [tasks, userId]);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.USERS, users);
   }, [users]);
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.NOTIFICATIONS, notifications);
-  }, [notifications]);
+    if (!isSupabaseConfigured()) {
+      saveToStorage(`${STORAGE_KEYS.NOTIFICATIONS}_${userId}`, notifications);
+    }
+  }, [notifications, userId]);
 
   // Load from Supabase if configured or via server config API
   useEffect(() => {
