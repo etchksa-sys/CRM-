@@ -1,11 +1,13 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Get Supabase credentials automatically from Vite / Vercel environment variables
+// Get Supabase credentials automatically from Vite / Vercel environment variables or runtime injection
 export const getSupabaseConfig = () => {
   const meta = import.meta as any;
   const env = meta.env || {};
-  const url = (env.VITE_SUPABASE_URL as string) || '';
-  const anonKey = (env.VITE_SUPABASE_ANON_KEY as string) || '';
+  const win = typeof window !== 'undefined' ? (window as any) : {};
+  
+  const url = (env.VITE_SUPABASE_URL as string) || (env.SUPABASE_URL as string) || win.__SUPABASE_URL__ || '';
+  const anonKey = (env.VITE_SUPABASE_ANON_KEY as string) || (env.SUPABASE_ANON_KEY as string) || win.__SUPABASE_ANON_KEY__ || '';
   return { url, anonKey };
 };
 

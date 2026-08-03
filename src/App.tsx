@@ -137,50 +137,68 @@ export default function App() {
     saveToStorage(STORAGE_KEYS.NOTIFICATIONS, notifications);
   }, [notifications]);
 
-  // Load from Supabase if configured
+  // Load from Supabase if configured or via server config API
   useEffect(() => {
-    if (isSupabaseConfigured()) {
-      fetchSupabaseData().then(async (res) => {
-        if (res) {
-          if (res.contacts && res.contacts.length > 0) {
-            setContacts(res.contacts);
-          } else {
-            setContacts(initialContacts);
-            await seedSupabaseData({ 
-              contacts: initialContacts, 
-              deals: initialDeals, 
-              tasks: initialTasks, 
-              users: initialUsers, 
-              notifications: initialNotifications 
-            });
+    const initSupabase = async () => {
+      let configured = isSupabaseConfigured();
+      if (!configured) {
+        try {
+          const res = await fetch('/api/supabase-config');
+          const data = await res.json();
+          if (data.url && data.anonKey) {
+            (window as any).__SUPABASE_URL__ = data.url;
+            (window as any).__SUPABASE_ANON_KEY__ = data.anonKey;
+            configured = true;
           }
-
-          if (res.deals && res.deals.length > 0) {
-            setDeals(res.deals);
-          } else {
-            setDeals(initialDeals);
-          }
-
-          if (res.tasks && res.tasks.length > 0) {
-            setTasks(res.tasks);
-          } else {
-            setTasks(initialTasks);
-          }
-
-          if (res.users && res.users.length > 0) {
-            setUsers(res.users);
-          } else {
-            setUsers(initialUsers);
-          }
-
-          if (res.notifications && res.notifications.length > 0) {
-            setNotifications(res.notifications);
-          } else {
-            setNotifications(initialNotifications);
-          }
+        } catch (e) {
+          // ignore
         }
-      });
-    }
+      }
+
+      if (configured) {
+        fetchSupabaseData().then(async (res) => {
+          if (res) {
+            if (res.contacts && res.contacts.length > 0) {
+              setContacts(res.contacts);
+            } else {
+              setContacts(initialContacts);
+              await seedSupabaseData({ 
+                contacts: initialContacts, 
+                deals: initialDeals, 
+                tasks: initialTasks, 
+                users: initialUsers, 
+                notifications: initialNotifications 
+              });
+            }
+
+            if (res.deals && res.deals.length > 0) {
+              setDeals(res.deals);
+            } else {
+              setDeals(initialDeals);
+            }
+
+            if (res.tasks && res.tasks.length > 0) {
+              setTasks(res.tasks);
+            } else {
+              setTasks(initialTasks);
+            }
+
+            if (res.users && res.users.length > 0) {
+              setUsers(res.users);
+            } else {
+              setUsers(initialUsers);
+            }
+
+            if (res.notifications && res.notifications.length > 0) {
+              setNotifications(res.notifications);
+            } else {
+              setNotifications(initialNotifications);
+            }
+          }
+        });
+      }
+    };
+    initSupabase();
   }, []);
 
   useEffect(() => {

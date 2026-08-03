@@ -62,6 +62,14 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+// Supabase config endpoint for automatic Vercel environment detection
+app.get("/api/supabase-config", (req, res) => {
+  res.json({
+    url: process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '',
+    anonKey: process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || ''
+  });
+});
+
 async function startServer() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
