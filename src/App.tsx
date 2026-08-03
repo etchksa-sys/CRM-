@@ -65,40 +65,27 @@ export default function App() {
 
   const userId = authUser?.id || 'default';
 
-  // Data States with User-Specific LocalStorage or Supabase Persistence
-  const [contacts, setContacts] = useState<Contact[]>(() => 
-    isSupabaseConfigured() ? [] : loadFromStorage(`${STORAGE_KEYS.CONTACTS}_${userId}`, initialContacts)
-  );
-  const [deals, setDeals] = useState<Deal[]>(() => 
-    isSupabaseConfigured() ? [] : loadFromStorage(`${STORAGE_KEYS.DEALS}_${userId}`, initialDeals)
-  );
-  const [tasks, setTasks] = useState<Task[]>(() => 
-    isSupabaseConfigured() ? [] : loadFromStorage(`${STORAGE_KEYS.TASKS}_${userId}`, initialTasks)
-  );
-  const [users, setUsers] = useState<UserAccount[]>(() => {
-    if (isSupabaseConfigured()) {
-      return [{
-        id: 'admin-1',
-        name: 'مدير النظام (Admin)',
-        email: 'admin@crmpro.com',
-        role: 'admin',
-        phone: '+966 50 000 0000',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
-        monthlyTarget: 1000000,
-        targetPeriod: 'yearly',
-        revenueGenerated: 0,
-        dealsCount: 0,
-        conversionRate: 100,
-        kpiScore: 100,
-        status: 'active',
-        canCreateUsers: true
-      }];
-    }
-    return loadFromStorage(STORAGE_KEYS.USERS, initialUsers);
-  });
-  const [notifications, setNotifications] = useState<NotificationItem[]>(() => 
-    isSupabaseConfigured() ? [] : loadFromStorage(`${STORAGE_KEYS.NOTIFICATIONS}_${userId}`, initialNotifications)
-  );
+  // Data States with Supabase Database Persistence (No LocalStorage for CRM records)
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [deals, setDeals] = useState<Deal[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [users, setUsers] = useState<UserAccount[]>([{
+    id: 'admin-1',
+    name: 'مدير النظام (Admin)',
+    email: 'admin@crmpro.com',
+    role: 'admin',
+    phone: '+966 50 000 0000',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+    monthlyTarget: 1000000,
+    targetPeriod: 'yearly',
+    revenueGenerated: 0,
+    dealsCount: 0,
+    conversionRate: 100,
+    kpiScore: 100,
+    status: 'active',
+    canCreateUsers: true
+  }]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [monthlyReports] = useState(initialMonthlyReports);
 
   // Toast State
@@ -177,44 +164,15 @@ export default function App() {
       }
 
       if (configured) {
-        fetchSupabaseData().then(async (res) => {
+        fetchSupabaseData().then((res) => {
           if (res) {
-            if (res.contacts && res.contacts.length > 0) {
-              setContacts(res.contacts);
-            } else {
-              setContacts(initialContacts);
-              await seedSupabaseData({ 
-                contacts: initialContacts, 
-                deals: initialDeals, 
-                tasks: initialTasks, 
-                users: initialUsers, 
-                notifications: initialNotifications 
-              });
-            }
-
-            if (res.deals && res.deals.length > 0) {
-              setDeals(res.deals);
-            } else {
-              setDeals(initialDeals);
-            }
-
-            if (res.tasks && res.tasks.length > 0) {
-              setTasks(res.tasks);
-            } else {
-              setTasks(initialTasks);
-            }
-
+            setContacts(res.contacts || []);
+            setDeals(res.deals || []);
+            setTasks(res.tasks || []);
             if (res.users && res.users.length > 0) {
               setUsers(res.users);
-            } else {
-              setUsers(initialUsers);
             }
-
-            if (res.notifications && res.notifications.length > 0) {
-              setNotifications(res.notifications);
-            } else {
-              setNotifications(initialNotifications);
-            }
+            setNotifications(res.notifications || []);
           }
         });
       }

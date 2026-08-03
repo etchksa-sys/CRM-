@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 
@@ -120,9 +121,50 @@ async function startServer() {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
+      try {
+        const filePath = path.join(distPath, 'index.html');
+        if (fs.existsSync(filePath)) {
+          let html = fs.readFileSync(filePath, 'utf-8');
+          const sbUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
+          const sbKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+          html = html.replace('</head>', `<script>
+            window.__SUPABASE_URL__ = "${sbUrl}";
+            window.__SUPABASE_ANON_KEY__ = "${sbKey}";
+          </script></head>`);
+          res.send(html);
+          return;
+        }
+      } catch (e) {
+        // fallthrough
+      }
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
+
+  // Also handle catch-all for Vercel or general requests to inject runtime config
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) {
+      return next();
+    }
+    const distPath = path.join(process.cwd(), 'dist');
+    const filePath = path.join(process.cwd(), 'index.html');
+    const targetFile = fs.existsSync(filePath) ? filePath : path.join(distPath, 'index.html');
+    try {
+      if (fs.existsSync(targetFile)) {
+        let html = fs.readFileSync(targetFile, 'utf-8');
+        const sbUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
+        const sbKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+        html = html.replace('</head>', `<script>
+          window.__SUPABASE_URL__ = "${sbUrl}";
+          window.__SUPABASE_ANON_KEY__ = "${sbKey}";
+        </script></head>`);
+        return res.send(html);
+      }
+    } catch (e) {
+      // fallthrough
+    }
+    next();
+  });
 
   if (!process.env.VERCEL) {
     app.listen(PORT, "0.0.0.0", () => {
