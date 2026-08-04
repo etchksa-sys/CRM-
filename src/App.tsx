@@ -560,7 +560,7 @@ export default function App() {
   const handleLogout = () => {
     setAuthUser(null);
     localStorage.removeItem(STORAGE_KEYS.AUTH_USER);
-    triggerToast('تم تسجيل الخروج 🔒', 'تم خروجك من الحساب بنجاح، يمكنك تسجيل الدخول بحساب آخر أو تسجيل حساب جديد.', 'info');
+    triggerToast('تم تسجيل الخروج 🔒', 'تم خروجك من الحساب بنجاح، يمكنك تسجيل الدخول باستخدام حسابك المعتمد.', 'info');
   };
 
   // Notification Handlers

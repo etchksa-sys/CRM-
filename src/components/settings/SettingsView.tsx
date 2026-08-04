@@ -244,43 +244,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </div>
 
-      {/* Section 1: Vercel Deployment Guide */}
-      <div className="p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 shadow-sm space-y-4">
-        <h4 className="text-sm font-extrabold text-slate-800 dark:text-white flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-700">
-          <Globe className="w-4 h-4 text-blue-500" /> 
-          {language === 'en' ? 'Vercel Deployment Instructions' : 'تعليمات النشر على منصة Vercel'}
-        </h4>
-
-        <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-          <p>
-            {language === 'en'
-              ? 'This project is fully configured for seamless deployment on Vercel with support for frontend SPA and backend API routes (/api/*).'
-              : 'هذا المشروع مهيأ بالكامل للنشر الفوري على منصة Vercel مع دعم الواجهة الأمامية (SPA) ومسارات الخلفية (Backend API).'}
-          </p>
-
-          <ol className="list-decimal list-inside space-y-2 font-medium">
-            <li>
-              {language === 'en' ? 'Export this project to GitHub or use Vercel CLI.' : 'قم برفع المشروع إلى مستودع GitHub الخاص بك أو استخدم أداة Vercel CLI.'}
-            </li>
-            <li>
-              {language === 'en' ? 'Import the repository in your Vercel Dashboard.' : 'قم باستيراد المستودع من لوحة تحكم Vercel Dashboard.'}
-            </li>
-            <li>
-              {language === 'en' ? 'Add Environment Variables in Vercel project settings:' : 'أضف متغيرات البيئة التالية في إعدادات المشروع على Vercel:'}
-              <ul className="list-disc list-inside mr-6 mt-1 space-y-1 font-mono text-[11px] text-indigo-600 dark:text-indigo-400">
-                <li>GEMINI_API_KEY = your_gemini_api_key</li>
-                <li>VITE_SUPABASE_URL = your_supabase_project_url</li>
-                <li>VITE_SUPABASE_ANON_KEY = your_supabase_anon_key</li>
-              </ul>
-            </li>
-            <li>
-              {language === 'en' ? 'Click Deploy and your CRM Pro app will be live globally!' : 'اضغط على Deploy وسيعمل نظام CRM Pro على الإنترنت خلال ثوانٍ!'}
-            </li>
-          </ol>
-        </div>
-      </div>
-
-      {/* Section 2: Appearance & RTL Layout */}
+      {/* Section 1: Appearance & RTL Layout */}
       <div className="p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 shadow-sm space-y-4">
         <h4 className="text-sm font-extrabold text-slate-800 dark:text-white flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-700">
           <Globe className="w-4 h-4 text-blue-500" /> {language === 'en' ? 'Appearance & Localization' : 'المظهر العام واللغة (Localization & UI)'}
