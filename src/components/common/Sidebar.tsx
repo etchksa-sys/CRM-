@@ -42,7 +42,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   language = 'ar',
   onToggleLanguage
 }) => {
-  const navItems = getNavItems(language);
+  const allNavItems = getNavItems(language);
+  const userAllowedPages = currentUser?.allowedPages;
+  const navItems = (userAllowedPages && userAllowedPages.length > 0)
+    ? allNavItems.filter(item => userAllowedPages.includes(item.id))
+    : allNavItems;
 
   return (
     <>

@@ -83,6 +83,7 @@ export interface UserAccount {
   managerFeedback?: string; // مراجعة وتقييم المدير
   stagnantDealsCount?: number; // عدد الصفقات الراكدة أو المتأخرة
   canCreateUsers?: boolean; // صلاحية إنشاء وتسجيل حسابات موظفين ومستخدمين جدد
+  allowedPages?: ViewType[]; // الصفحات وقطاعات النظام المسموح للمستخدم بالوصول إليها
 }
 
 export interface NotificationItem {

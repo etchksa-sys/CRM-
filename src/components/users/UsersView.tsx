@@ -52,6 +52,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<UserRole>('sales_engineer');
   const [canCreateUsers, setCanCreateUsers] = useState(false);
+  const [allowedPages, setAllowedPages] = useState<ViewType[]>(['dashboard', 'contacts', 'deals', 'tasks', 'reports', 'users', 'settings']);
 
   // Rep Evaluation Audit State
   const [selectedUserForAudit, setSelectedUserForAudit] = useState<UserAccount | null>(null);
@@ -60,6 +61,17 @@ export const UsersView: React.FC<UsersViewProps> = ({
   const [editingPeriod, setEditingPeriod] = useState<'monthly' | 'quarterly' | 'half_yearly' | 'yearly'>('monthly');
   const [editingRole, setEditingRole] = useState<UserRole>('sales_engineer');
   const [editingCanCreate, setEditingCanCreate] = useState(false);
+  const [editingAllowedPages, setEditingAllowedPages] = useState<ViewType[]>(['dashboard', 'contacts', 'deals', 'tasks', 'reports', 'users', 'settings']);
+
+  const ALL_SYSTEM_PAGES: { id: ViewType; labelAr: string; labelEn: string }[] = [
+    { id: 'dashboard', labelAr: '📊 لوحة التحكم والمؤشرات', labelEn: '📊 Dashboard' },
+    { id: 'contacts', labelAr: '👥 سجل العملاء والحسابات', labelEn: '👥 Contacts' },
+    { id: 'deals', labelAr: '💼 لوحة الصفقات (Kanban)', labelEn: '💼 Deals' },
+    { id: 'tasks', labelAr: '📌 المهام والمواعيد', labelEn: '📌 Tasks' },
+    { id: 'reports', labelAr: '📈 التقارير والتحليلات', labelEn: '📈 Reports' },
+    { id: 'users', labelAr: '👨‍💼 فريق العمل والصلاحيات', labelEn: '👨‍💼 Team' },
+    { id: 'settings', labelAr: '⚙️ إعدادات النظام', labelEn: '⚙️ Settings' }
+  ];
 
   const getPeriodLabel = (period?: 'monthly' | 'quarterly' | 'half_yearly' | 'yearly') => {
     switch (period) {
@@ -92,14 +104,15 @@ export const UsersView: React.FC<UsersViewProps> = ({
       lastActiveDate: 'الآن',
       managerFeedback: 'موظف جديد تحت فترة التقييم والتجربة.',
       stagnantDealsCount: 0,
-      canCreateUsers: canCreateUsers || role === 'admin' || role === 'sales_manager'
+      canCreateUsers: canCreateUsers || role === 'admin' || role === 'sales_manager',
+      allowedPages: allowedPages.length > 0 ? allowedPages : ['dashboard', 'contacts', 'deals', 'tasks', 'reports', 'users', 'settings']
     });
 
     setName('');
     setEmail('');
     setPhone('');
     setShowAddForm(false);
-    onTriggerToast('تم إضافة الموظف بنجاح', `تم منح الصلاحيات لموظف المبيعات الجديد: ${name}`, 'success');
+    onTriggerToast('تم إضافة الموظف بنجاح', `تم منح الصلاحيات وتحديد الصفحات للموظف الجديد: ${name}`, 'success');
   };
 
   const handleOpenAudit = (user: UserAccount) => {
@@ -109,6 +122,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
     setEditingPeriod(user.targetPeriod || 'monthly');
     setEditingRole(user.role);
     setEditingCanCreate(user.canCreateUsers || user.role === 'admin' || user.role === 'sales_manager');
+    setEditingAllowedPages(user.allowedPages && user.allowedPages.length > 0 ? user.allowedPages : ['dashboard', 'contacts', 'deals', 'tasks', 'reports', 'users', 'settings']);
   };
 
   const handleSaveFeedback = () => {
@@ -117,14 +131,15 @@ export const UsersView: React.FC<UsersViewProps> = ({
         ...selectedUserForAudit,
         role: editingRole,
         canCreateUsers: editingCanCreate || editingRole === 'admin' || editingRole === 'sales_manager',
+        allowedPages: editingAllowedPages,
         managerFeedback: editingFeedback,
         targetPeriod: editingPeriod,
         monthlyTarget: typeof editingTarget === 'number' && editingTarget >= 0 ? editingTarget : selectedUserForAudit.monthlyTarget
       };
       onUpdateUser?.(updatedUser);
       onTriggerToast(
-        'تم حفظ التقييم والمستهدف البيعي ✨',
-        `تم تحديث التارجت (${getPeriodLabel(editingPeriod)}) والملاحظات للموظف ${updatedUser.name} بنجاح وحفظه في النظام.`,
+        'تم حفظ التقييم والصلاحيات ✨',
+        `تم تحديث التارجت والصفحات المتاحة للموظف ${updatedUser.name} بنجاح.`,
         'success'
       );
       setSelectedUserForAudit(null);
@@ -364,10 +379,10 @@ export const UsersView: React.FC<UsersViewProps> = ({
               </p>
             </div>
 
-            {/* Position and Account Creation Permission Settings */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-3">
+            {/* Position, Account Creation & Page Access Permissions */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-4">
               <h4 className="text-xs font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-purple-600 dark:text-purple-400" /> تعديل المسمى الوظيفي وصلاحيات الحساب
+                <ShieldCheck className="w-4 h-4 text-purple-600 dark:text-purple-400" /> تعديل المسمى الوظيفي وصلاحيات الوصول والقطاعات
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -397,6 +412,45 @@ export const UsersView: React.FC<UsersViewProps> = ({
                     />
                     <span>منح صلاحية إنشاء وتسجيل حسابات جديدة في النظام</span>
                   </label>
+                </div>
+              </div>
+
+              {/* Page Access Selection (UI / Section Visibility Control) */}
+              <div className="pt-3 border-t border-slate-200/80 dark:border-slate-700/80 space-y-2">
+                <label className="block text-xs font-extrabold text-slate-800 dark:text-white">
+                  القطاعات والصفحات المسموح لهذا الموظف برؤيتها والوصول إليها:
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                  {ALL_SYSTEM_PAGES.map((page) => {
+                    const isChecked = editingAllowedPages.includes(page.id);
+                    return (
+                      <label
+                        key={page.id}
+                        className={`p-2 rounded-xl border text-xs font-bold flex items-center gap-2 cursor-pointer transition-all ${
+                          isChecked
+                            ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-700 text-purple-900 dark:text-purple-200'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-500 opacity-60'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setEditingAllowedPages(prev => [...prev, page.id]);
+                            } else {
+                              // Ensure at least one page remains
+                              if (editingAllowedPages.length > 1) {
+                                setEditingAllowedPages(prev => prev.filter(p => p !== page.id));
+                              }
+                            }
+                          }}
+                          className="w-3.5 h-3.5 rounded text-purple-600 focus:ring-purple-500"
+                        />
+                        <span>{page.labelAr}</span>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -528,6 +582,44 @@ export const UsersView: React.FC<UsersViewProps> = ({
               <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
               <span>منح هذا الموظف صلاحية إنشاء وتسجيل حسابات وموظفين جدد في النظام</span>
             </label>
+          </div>
+
+          {/* Allowed Pages Selection */}
+          <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
+            <label className="block text-xs font-extrabold text-slate-800 dark:text-white">
+              تحديد القطاعات والصفحات المتاحة للموظف (Section Access):
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+              {ALL_SYSTEM_PAGES.map((page) => {
+                const isChecked = allowedPages.includes(page.id);
+                return (
+                  <label
+                    key={page.id}
+                    className={`p-2 rounded-xl border text-xs font-bold flex items-center gap-2 cursor-pointer transition-all ${
+                      isChecked
+                        ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-200'
+                        : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-400 opacity-60'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setAllowedPages(prev => [...prev, page.id]);
+                        } else {
+                          if (allowedPages.length > 1) {
+                            setAllowedPages(prev => prev.filter(p => p !== page.id));
+                          }
+                        }
+                      }}
+                      className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500"
+                    />
+                    <span>{page.labelAr}</span>
+                  </label>
+                );
+              })}
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-2">

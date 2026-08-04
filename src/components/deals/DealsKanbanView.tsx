@@ -14,7 +14,8 @@ import {
   Search,
   GripVertical,
   Move,
-  Download
+  Download,
+  Trash2
 } from 'lucide-react';
 import { Deal, DealStage, UserAccount } from '../../types';
 import { STAGE_LABELS, STAGE_COLORS } from '../../data/mockData';
@@ -24,6 +25,7 @@ import { exportDealsToExcel } from '../../utils/excelExport';
 interface DealsKanbanViewProps {
   deals: Deal[];
   onMoveDeal: (dealId: string, newStage: DealStage) => void;
+  onDeleteDeal?: (dealId: string) => void;
   onOpenQuickAdd: (tab?: 'contact' | 'deal' | 'task') => void;
   users: UserAccount[];
   language?: string;
@@ -32,6 +34,7 @@ interface DealsKanbanViewProps {
 export const DealsKanbanView: React.FC<DealsKanbanViewProps> = ({
   deals,
   onMoveDeal,
+  onDeleteDeal,
   onOpenQuickAdd,
   users,
   language = 'ar'
@@ -265,14 +268,31 @@ export const DealsKanbanView: React.FC<DealsKanbanViewProps> = ({
                             : 'border-slate-200/90 dark:border-slate-700/80 shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-700/80'
                         }`}
                       >
-                        {/* Top: Grip & Percentage */}
+                        {/* Top: Grip, Percentage & Delete Action */}
                         <div className="flex items-center justify-between gap-1">
                           <span className="text-slate-300 dark:text-slate-600 group-hover:text-purple-500 transition-colors" title="اسحب الصفقة">
                             <GripVertical className="w-4 h-4" />
                           </span>
-                          <span className="text-[11px] font-black px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300">
-                            {deal.probability}%
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] font-black px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300">
+                              {deal.probability}%
+                            </span>
+                            {onDeleteDeal && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (window.confirm(language === 'en' ? `Delete deal "${deal.title}"?` : `هل أنت متأكد من حذف الصفقة "${deal.title}"؟`)) {
+                                    onDeleteDeal(deal.id);
+                                  }
+                                }}
+                                className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors opacity-80 sm:opacity-0 group-hover:opacity-100"
+                                title={language === 'en' ? 'Delete deal' : 'حذف الصفقة'}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         {/* Middle: Part of Name */}

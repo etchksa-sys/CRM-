@@ -213,6 +213,15 @@ export default function App() {
     );
   };
 
+  // Page Access Permission Guard
+  useEffect(() => {
+    if (authUser && authUser.allowedPages && authUser.allowedPages.length > 0) {
+      if (!authUser.allowedPages.includes(currentView)) {
+        setCurrentView(authUser.allowedPages[0]);
+      }
+    }
+  }, [authUser, currentView]);
+
   // Contact Handlers
   const handleAddContact = async (contactData: Omit<Contact, 'id' | 'createdAt' | 'timeline'>) => {
     const newContact: Contact = {
@@ -247,6 +256,53 @@ export default function App() {
 
   const handleDeleteContact = async (contactId: string) => {
     const target = contacts.find((c) => c.id === contactId);
+    if (!target) return;
+
+    // Check connected deals & tasks
+    const connectedDeals = deals.filter(
+      (d) => d.contactId === contactId || (d.contactName && d.contactName.trim().toLowerCase() === target.name.trim().toLowerCase())
+    );
+
+    const connectedTasks = tasks.filter(
+      (t) => t.relatedToId === contactId || (t.relatedToType === 'contact' && t.relatedToName && t.relatedToName.trim().toLowerCase() === target.name.trim().toLowerCase())
+    );
+
+    if (connectedDeals.length > 0 || connectedTasks.length > 0) {
+      const dealTitles = connectedDeals.map((d) => `"${d.title}"`).slice(0, 3).join('، ');
+      const taskTitles = connectedTasks.map((t) => `"${t.title}"`).slice(0, 3).join('، ');
+
+      let alertMessage = language === 'en'
+        ? `⛔ Cannot delete contact "${target.name}" because it has active connected items:\n\n`
+        : `⛔ لا يمكن حذف العميل "${target.name}" لوجود سجلات مرتبطة به مباشرة:\n\n`;
+
+      if (connectedDeals.length > 0) {
+        alertMessage += language === 'en'
+          ? `• ${connectedDeals.length} Connected Deal(s): ${dealTitles}\n`
+          : `• ${connectedDeals.length} صفقة بيعية مرتبطة: (${dealTitles})\n`;
+      }
+
+      if (connectedTasks.length > 0) {
+        alertMessage += language === 'en'
+          ? `• ${connectedTasks.length} Connected Task(s): ${taskTitles}\n`
+          : `• ${connectedTasks.length} مهمة/تذكير مرتبط: (${taskTitles})\n`;
+      }
+
+      alertMessage += language === 'en'
+        ? '\n⚠️ Action Required: Please delete or re-assign all connected deals and tasks first before deleting this contact.'
+        : '\n⚠️ المطلوب قبل الحذف: يرجى حذف أو نقل الصفقات والمهام المرتبطة بالعميل أولاً لتتمكن من حذف حساب العميل بنجاح.';
+
+      alert(alertMessage);
+
+      triggerToast(
+        language === 'en' ? 'Deletion Blocked ⛔' : 'تم منع الحذف ⛔',
+        language === 'en'
+          ? `Contact "${target.name}" has ${connectedDeals.length} deal(s) and ${connectedTasks.length} task(s). Delete them first.`
+          : `العميل "${target.name}" مرتبط بـ ${connectedDeals.length} صفقة و ${connectedTasks.length} مهمة. يجب حذفها أو نقلها أولاً.`,
+        'info'
+      );
+      return;
+    }
+
     setContacts((prev) => prev.filter((c) => c.id !== contactId));
     if (isSupabaseConfigured()) {
       const res = await syncItemToSupabase('contacts', { id: contactId }, 'delete');
@@ -254,9 +310,7 @@ export default function App() {
         triggerToast('خطأ Supabase ⚠️', `فشل حذف العميل من قاعدة البيانات: ${res.error}`, 'info');
       }
     }
-    if (target) {
-      triggerToast('تم حذف العميل', `تم حذف حساب العميل "${target.name}" من النظام.`, 'info');
-    }
+    triggerToast('تم حذف العميل', `تم حذف حساب العميل "${target.name}" من النظام بنجاح.`, 'info');
   };
 
   const handleAddTimelineInteraction = async (contactId: string, interaction: Omit<TimelineInteraction, 'id'>) => {
@@ -348,6 +402,21 @@ export default function App() {
     }
   };
 
+  const handleDeleteDeal = async (dealId: string) => {
+    const target = deals.find((d) => d.id === dealId);
+    setDeals((prev) => prev.filter((d) => d.id !== dealId));
+    if (isSupabaseConfigured()) {
+      await syncItemToSupabase('deals', { id: dealId }, 'delete');
+    }
+    if (target) {
+      triggerToast(
+        language === 'en' ? 'Deal Deleted 🗑️' : 'تم حذف الصفقة 🗑️',
+        language === 'en' ? `Deal "${target.title}" was permanently removed.` : `تم حذف الصفقة "${target.title}" نهائياً من مسار المبيعات.`,
+        'info'
+      );
+    }
+  };
+
   // Task Handlers
   const handleAddTask = async (taskData: Omit<Task, 'id' | 'completed'>) => {
     const newTask: Task = {
@@ -427,6 +496,51 @@ export default function App() {
   };
 
   const handleDeleteUser = async (userId: string) => {
+    const target = users.find((u) => u.id === userId);
+    if (!target) return;
+
+    // Check assigned contacts, deals, and tasks
+    const assignedContacts = contacts.filter((c) => c.assignedTo === target.id || c.assignedTo === target.name);
+    const assignedDeals = deals.filter((d) => d.assignedTo === target.id || d.assignedTo === target.name);
+    const assignedTasks = tasks.filter((t) => t.assignedTo === target.id || t.assignedTo === target.name);
+
+    if (assignedContacts.length > 0 || assignedDeals.length > 0 || assignedTasks.length > 0) {
+      let alertMessage = language === 'en'
+        ? `⛔ Cannot delete user account "${target.name}" because it has active assigned items:\n\n`
+        : `⛔ لا يمكن حذف حساب الموظف/المستخدم "${target.name}" لوجود سجلات حية مسندة إليه:\n\n`;
+
+      if (assignedContacts.length > 0) {
+        alertMessage += language === 'en'
+          ? `• ${assignedContacts.length} Assigned Contact(s)\n`
+          : `• ${assignedContacts.length} عميل/عملاء مسندين له\n`;
+      }
+      if (assignedDeals.length > 0) {
+        alertMessage += language === 'en'
+          ? `• ${assignedDeals.length} Assigned Deal(s) in Pipeline\n`
+          : `• ${assignedDeals.length} صفقة بيعية في المسار\n`;
+      }
+      if (assignedTasks.length > 0) {
+        alertMessage += language === 'en'
+          ? `• ${assignedTasks.length} Assigned Task(s)\n`
+          : `• ${assignedTasks.length} مهمة أو موعد مطلوب\n`;
+      }
+
+      alertMessage += language === 'en'
+        ? '\n⚠️ Action Required: Please re-assign or delete all contacts, deals, and tasks assigned to this user before deleting their account.'
+        : '\n⚠️ المطلوب قبل الحذف: يرجى إعادة إسناد أو حذف جميع العملاء والصفقات والمهام المرتبطة بهذا الموظف أولاً لتتمكن من حذف حسابه بنجاح.';
+
+      alert(alertMessage);
+
+      triggerToast(
+        language === 'en' ? 'User Deletion Blocked ⛔' : 'تعذر حذف الموظف ⛔',
+        language === 'en'
+          ? `User "${target.name}" is assigned to active records. Re-assign or delete them first.`
+          : `الموظف "${target.name}" مسند إليه عملاء أو صفقات أو مهام. يرجى نقلها أو حذفها أولاً.`,
+        'info'
+      );
+      return;
+    }
+
     setUsers((prev) => prev.filter((u) => u.id !== userId));
     if (isSupabaseConfigured()) {
       await syncItemToSupabase('users', { id: userId }, 'delete');
@@ -435,7 +549,7 @@ export default function App() {
       setAuthUser(null);
       localStorage.removeItem(STORAGE_KEYS.AUTH_USER);
     }
-    triggerToast('تم حذف الموظف', 'تم إزالة حساب الموظف بنجاح من النظام.', 'info');
+    triggerToast('تم حذف الموظف', `تم إزالة حساب الموظف "${target.name}" بنجاح من النظام.`, 'info');
   };
 
   const handleLogin = (user: UserAccount) => {
@@ -551,6 +665,7 @@ export default function App() {
               <DealsKanbanView
                 deals={deals}
                 onMoveDeal={handleMoveDeal}
+                onDeleteDeal={handleDeleteDeal}
                 onOpenQuickAdd={handleOpenQuickAdd}
                 users={users}
                 language={language}

@@ -195,72 +195,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   notifications = [],
   language = 'ar'
 }) => {
-  const [supabaseConnected, setSupabaseConnected] = useState(isSupabaseConfigured());
-  const [showSqlModal, setShowSqlModal] = useState(false);
-  const [copiedSql, setCopiedSql] = useState(false);
-  const [isSeeding, setIsSeeding] = useState(false);
-  const currentCfg = getSupabaseConfig();
-  const [inputUrl, setInputUrl] = useState(currentCfg.url);
-  const [inputKey, setInputKey] = useState(currentCfg.anonKey);
-
-  const handleSaveSupabaseConfig = (e: React.FormEvent) => {
-    e.preventDefault();
-    saveSupabaseConfig(inputUrl, inputKey);
-    const connected = isSupabaseConfigured();
-    setSupabaseConnected(connected);
-    onTriggerToast(
-      connected ? (language === 'en' ? 'Supabase Connected! ☁️' : 'تم الاتصال بقاعدة بيانات Supabase بنجاح! ☁️') : (language === 'en' ? 'Invalid Credentials' : 'بيانات غير كافية'),
-      connected ? (language === 'en' ? 'Live PostgreSQL connection established.' : 'تم تفعيل الاتصال المباشر بقاعدة البيانات.') : (language === 'en' ? 'Please enter both URL and Anon Key.' : 'يرجى إدخال الرابط ومفتاح Anon Key بشكل صحيح.'),
-      connected ? 'success' : 'info'
-    );
-  };
-
-  const handleSeedToSupabase = async () => {
-    if (!isSupabaseConfigured()) {
-      onTriggerToast(
-        language === 'en' ? 'Not Connected' : 'غير متصل',
-        language === 'en' ? 'Supabase environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY) are not configured in Vercel.' : 'متغيرات بيئة Supabase (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY) غير معدة في Vercel.',
-        'info'
-      );
-      return;
-    }
-
-    setIsSeeding(true);
-    const success = await seedSupabaseData({
-      contacts,
-      deals,
-      tasks,
-      users,
-      notifications
-    });
-    setIsSeeding(false);
-
-    if (success) {
-      onTriggerToast(
-        language === 'en' ? 'Data Synced to Supabase! ☁️' : 'تم رفع ونشر البيانات إلى Supabase بنجاح! ☁️',
-        language === 'en' ? 'All local records successfully stored in Supabase tables.' : 'تم حفظ وتخزين كافة السجلات في جداول قاعدة البيانات الحقيقية.',
-        'success'
-      );
-    } else {
-      onTriggerToast(
-        language === 'en' ? 'Sync Error' : 'خطأ في المزامنة',
-        language === 'en' ? 'Failed to sync. Please ensure you created the tables using the SQL script first.' : 'فشل الرفع. تأكد من إنشاء الجداول في لوحة تحكم Supabase باستخدام كود SQL أولاً.',
-        'info'
-      );
-    }
-  };
-
-  const handleCopySql = () => {
-    navigator.clipboard.writeText(SUPABASE_SQL_CODE);
-    setCopiedSql(true);
-    setTimeout(() => setCopiedSql(false), 2000);
-    onTriggerToast(
-      language === 'en' ? 'SQL Copied!' : 'تم نسخ كود SQL!',
-      language === 'en' ? 'Paste this in Supabase SQL Editor.' : 'قم بلصقه في محرر الاستعلامات SQL Editor في Supabase.',
-      'success'
-    );
-  };
-
   const handleResetDemoData = () => {
     if (confirm(language === 'en' ? 'Are you sure you want to reset all demo data to default?' : 'هل أنت متأكد من إعادة ضبط كافة العينات والبيانات إلى الوضع الأصلي (الافتراضي)؟ سيتم حذف أي إضافات جديدة قمت بها.')) {
       resetAllStorageToDefaults();
@@ -302,119 +236,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div>
           <h3 className="text-base font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
             <SettingsIcon className="w-5 h-5 text-slate-600 dark:text-slate-300" /> 
-            {language === 'en' ? 'System Settings & Integrations' : 'إعدادات النظام، الربط السحابي (Supabase) والنشر (Vercel)'}
+            {language === 'en' ? 'System Settings & Data Management' : 'إعدادات النظام وإدارة البيانات النسخ الاحتياطي'}
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            {language === 'en' ? 'Manage database connections, Vercel deployment config, dark mode & notifications' : 'إدارة قواعد البيانات السحابية Supabase، النشر على Vercel، الوضع الليلي، والتنبيهات التلقائية'}
+            {language === 'en' ? 'Manage system options, data export, dark mode & preferences' : 'إدارة خيارات النظام، تصدير البيانات والنسخ الاحتياطي، الوضع الليلي، والتنبيهات التلقائية'}
           </p>
         </div>
-      </div>
-
-      {/* Section 0: Supabase Cloud Database Integration & Tables Creation */}
-      <div className="p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 shadow-sm space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
-          <h4 className="text-sm font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
-            <Cloud className="w-4 h-4 text-emerald-500" /> 
-            {language === 'en' ? 'Supabase Database & Tables' : 'قاعدة بيانات Supabase وإنشاء الجداول الحقيقية'}
-          </h4>
-          <button
-            onClick={() => setShowSqlModal(!showSqlModal)}
-            className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-all"
-          >
-            <Code className="w-3.5 h-3.5 text-emerald-500" />
-            <span>{showSqlModal ? (language === 'en' ? 'Hide SQL Script' : 'إخفاء كود SQL للجداول') : (language === 'en' ? 'View SQL Script for Tables' : 'عرض كود SQL لإنشاء الجداول في Supabase')}</span>
-          </button>
-        </div>
-
-        {/* SQL Script Accordion / Box */}
-        {showSqlModal && (
-          <div className="p-4 rounded-2xl bg-slate-900 text-slate-200 text-xs font-mono space-y-3 border border-slate-700 shadow-inner">
-            <div className="flex items-center justify-between text-slate-400 pb-2 border-b border-slate-800">
-              <span>supabase_schema.sql (Contacts, Deals, Tasks, Users, Notifications)</span>
-              <button
-                onClick={handleCopySql}
-                className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1 text-[11px] transition-all"
-              >
-                {copiedSql ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copiedSql ? (language === 'en' ? 'Copied!' : 'تم النسخ!') : (language === 'en' ? 'Copy SQL' : 'نسخ كود SQL')}</span>
-              </button>
-            </div>
-            <pre className="overflow-x-auto p-2 text-[11px] leading-relaxed text-emerald-400 max-h-60">
-              {SUPABASE_SQL_CODE}
-            </pre>
-            <p className="text-[11px] text-slate-400">
-              {language === 'en' 
-                ? '💡 Tip: Go to your Supabase Project -> SQL Editor -> New Query -> Paste this code and click Run. Once tables are created, you can sync data instantly!'
-                : '💡 ملاحظة: اذهب إلى لوحة تحكم Supabase ثم SQL Editor ثم New Query، الصق هذا الكود واضغط Run (تشغيل). بعد إنشاء الجداول، يمكنك رفع البيانات بضغطة زر واحدة!'}
-            </p>
-          </div>
-        )}
-
-        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-          {language === 'en' 
-            ? 'Supabase is configured automatically via Vercel environment variables (VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY). All CRM data is securely stored in your live PostgreSQL database.' 
-            : 'يتم الاتصال بقاعدة بيانات Supabase تلقائياً عبر متغيرات البيئة في Vercel (VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY). يتم حفظ كافة بيانات النظام بشكل آمن ومباشر في قاعدة بيانات PostgreSQL.'}
-        </p>
-
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-          <div className="flex items-center gap-2">
-            <span className={`w-3 h-3 rounded-full ${supabaseConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-            <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
-              {supabaseConnected 
-                ? (language === 'en' ? 'Supabase Status: Connected & Active ✓' : 'حالة الاتصال: متصل بقاعدة البيانات بنجاح ✓') 
-                : (language === 'en' ? 'Status: Enter Supabase URL & Anon Key below or configure in Vercel' : 'حالة الاتصال: أدخل رابط و مفتاح Supabase أدناه أو اربطها بمتغيرات Vercel')}
-            </span>
-          </div>
-
-          {supabaseConnected && (
-            <button
-              type="button"
-              onClick={handleSeedToSupabase}
-              disabled={isSeeding}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold shadow-lg shadow-blue-600/30 transition-all flex items-center justify-center gap-2"
-            >
-              <Upload className="w-4 h-4" />
-              <span>{isSeeding ? (language === 'en' ? 'Syncing...' : 'جاري الرفع...') : (language === 'en' ? 'Seed Demo Data to Supabase' : 'رفع البيانات الافتراضية إلى Supabase')}</span>
-            </button>
-          )}
-        </div>
-
-        {/* Manual Supabase Credentials Form */}
-        <form onSubmit={handleSaveSupabaseConfig} className="pt-3 border-t border-slate-100 dark:border-slate-700 space-y-3">
-          <h5 className="text-xs font-bold text-slate-700 dark:text-slate-200">
-            {language === 'en' ? 'Manual Supabase Configuration (Optional Browser Override)' : 'إعداد يدوي لبيانات Supabase (اختياري للاختبار الفوري)'}
-          </h5>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">Supabase Project URL</label>
-              <input
-                type="text"
-                value={inputUrl}
-                onChange={(e) => setInputUrl(e.target.value)}
-                placeholder="https://xyzproject.supabase.co"
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">Supabase Anon Key</label>
-              <input
-                type="password"
-                value={inputKey}
-                onChange={(e) => setInputKey(e.target.value)}
-                placeholder="eyJhbGciOi..."
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-          </div>
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm"
-            >
-              {language === 'en' ? 'Save & Connect Supabase' : 'حفظ والاتصال بقاعدة البيانات'}
-            </button>
-          </div>
-        </form>
       </div>
 
       {/* Section 1: Vercel Deployment Guide */}
