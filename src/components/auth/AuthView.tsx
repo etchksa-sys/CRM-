@@ -6,7 +6,10 @@ import {
   Mail, 
   Briefcase,
   ShieldCheck,
-  UserCheck
+  UserCheck,
+  X,
+  Key,
+  CheckCircle2
 } from 'lucide-react';
 import { UserAccount } from '../../types';
 import { getRoleLabel, getRoleBadge } from '../../data/mockData';
@@ -14,6 +17,8 @@ import { getRoleLabel, getRoleBadge } from '../../data/mockData';
 interface AuthViewProps {
   existingUsers: UserAccount[];
   onLogin: (user: UserAccount) => void;
+  onUpdateUser?: (updatedUser: UserAccount) => void;
+  onDeleteUser?: (userId: string) => void;
   onRegister?: (newUser: UserAccount) => void;
   onTriggerToast: (title: string, message: string, type: 'success' | 'error' | 'info') => void;
   language?: 'ar' | 'en';
@@ -22,6 +27,8 @@ interface AuthViewProps {
 export const AuthView: React.FC<AuthViewProps> = ({
   existingUsers,
   onLogin,
+  onUpdateUser,
+  onDeleteUser,
   onTriggerToast,
   language = 'ar'
 }) => {
@@ -31,14 +38,75 @@ export const AuthView: React.FC<AuthViewProps> = ({
   const [selectedQuickUser, setSelectedQuickUser] = useState<string | null>(null);
   const [quickPassword, setQuickPassword] = useState('');
 
+  // Temp Password Change Modal State
+  const [tempPasswordUser, setTempPasswordUser] = useState<UserAccount | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Delete Fast Login Account
+  const handleDeleteFastUser = (e: React.MouseEvent, userToDelete: UserAccount) => {
+    e.stopPropagation();
+    if (confirm(`هل أنت تأكد من حذف وإزالة حساب الموظف "${userToDelete.name}" من قائمة التسجيل السريع؟`)) {
+      if (onDeleteUser) {
+        onDeleteUser(userToDelete.id);
+        if (selectedQuickUser === userToDelete.id) {
+          setSelectedQuickUser(null);
+        }
+      }
+    }
+  };
+
   // Handle Quick Login
   const handleQuickLogin = (user: UserAccount) => {
+    if (user.isTempPassword || (user.tempPassword && quickPassword.trim() === user.tempPassword)) {
+      setTempPasswordUser(user);
+      setNewPassword('');
+      setConfirmPassword('');
+      onTriggerToast(
+        'تغيير كلمة المرور المؤقتة 🔑',
+        `حساب ${user.name} مسجل بكلمة مرور مؤقتة. يرجى تعيين كلمة مرور جديدة آمنة قبل متابعة الدخول.`,
+        'info'
+      );
+      return;
+    }
+
     onTriggerToast(
       `مرحباً بك مجدداً، ${user.name}! 👋`,
       `تم التحقق من كلمة المرور وتسجيل الدخول بنجاح بحساب "${getRoleLabel(user.role)}"`,
       'success'
     );
     onLogin(user);
+  };
+
+  // Submit Changed Temp Password
+  const handleSubmitNewPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tempPasswordUser) return;
+
+    if (!newPassword || newPassword.length < 4) {
+      onTriggerToast('كلمة المرور قصيرة ⚠️', 'يرجى إدخال كلمة مرور جديدة تحتوي على 4 خانات على الأقل.', 'error');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      onTriggerToast('خطأ في التأكيد ❌', 'كلمة المرور الجديدة وتأكيدها غير متطابقين.', 'error');
+      return;
+    }
+
+    const updatedUser: UserAccount = {
+      ...tempPasswordUser,
+      tempPassword: newPassword,
+      isTempPassword: false
+    };
+
+    onUpdateUser?.(updatedUser);
+    onTriggerToast(
+      'تم تحديث كلمة المرور بنجاح 🎉',
+      `تم تغيير كلمة المرور لحساب (${updatedUser.name}) بنجاح وتم تسجيل الدخول.`,
+      'success'
+    );
+    setTempPasswordUser(null);
+    onLogin(updatedUser);
   };
 
   // Handle Form Login
@@ -61,7 +129,18 @@ export const AuthView: React.FC<AuthViewProps> = ({
     );
 
     if (found) {
-      handleQuickLogin(found);
+      if (found.isTempPassword || (found.tempPassword && loginPassword.trim() === found.tempPassword)) {
+        setTempPasswordUser(found);
+        setNewPassword('');
+        setConfirmPassword('');
+        onTriggerToast(
+          'تغيير كلمة المرور المؤقتة 🔑',
+          `حساب ${found.name} مسجل بكلمة مرور مؤقتة. يرجى تعيين كلمة مرور جديدة آمنة قبل متابعة الدخول.`,
+          'info'
+        );
+      } else {
+        handleQuickLogin(found);
+      }
     } else {
       const fallbackUser: UserAccount = {
         id: `u-${Date.now()}`,
@@ -89,6 +168,71 @@ export const AuthView: React.FC<AuthViewProps> = ({
 
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden font-sans" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+      
+      {/* Change Temp Password Modal Overlay */}
+      {tempPasswordUser && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-amber-500/50 rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-5 relative">
+            <button
+              onClick={() => setTempPasswordUser(null)}
+              className="absolute top-4 left-4 p-2 rounded-full bg-slate-800 text-slate-400 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="text-center space-y-2">
+              <div className="inline-flex p-3 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 mb-1">
+                <Key className="w-7 h-7" />
+              </div>
+              <h3 className="text-lg font-black text-white">تغيير كلمة المرور المؤقتة 🔐</h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                مرحباً <strong className="text-amber-400">{tempPasswordUser.name}</strong>! تم تسجيل دخولك باستخدام كلمة مرور مؤقتة. لتأمين حسابك، يرجى كتابة كلمة مرور جديدة خاصة بك:
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmitNewPassword} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">كلمة المرور الجديدة *</label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    required
+                    autoFocus
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="أدخل كلمة مرور جديدة..."
+                    className="w-full pl-4 pr-10 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-400"
+                  />
+                  <Lock className="w-4 h-4 text-amber-400 absolute right-3 top-3" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">تأكيد كلمة المرور الجديدة *</label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="إعادة كتابة كلمة المرور..."
+                    className="w-full pl-4 pr-10 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-400"
+                  />
+                  <ShieldCheck className="w-4 h-4 text-emerald-400 absolute right-3 top-3" />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-black shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>حفظ كلمة المرور الجديدة والدخول للنظام</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
       
       {/* Background Decorative Gradient Circles */}
       <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
@@ -133,31 +277,49 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 {existingUsers.map((user) => {
                   const isSelected = selectedQuickUser === user.id;
                   return (
-                    <button
-                      key={user.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedQuickUser(user.id);
-                        setQuickPassword('');
-                      }}
-                      className={`p-3 rounded-2xl border text-right transition-all flex flex-col justify-between hover:scale-[1.02] active:scale-[0.98] ${
-                        isSelected
-                          ? 'bg-blue-600/30 border-blue-400 text-white shadow-lg ring-2 ring-blue-500/50'
-                          : 'bg-slate-900/50 border-slate-700/60 hover:border-slate-600 text-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <img
-                          src={user.avatar}
-                          alt={user.name}
-                          className={`w-7 h-7 rounded-full object-cover ring-2 ${isSelected ? 'ring-blue-400' : 'ring-slate-700'}`}
-                        />
-                        <span className="text-xs font-bold truncate">{user.name}</span>
-                      </div>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 self-start font-medium border border-slate-700">
-                        {getRoleBadge(user.role)}
-                      </span>
-                    </button>
+                    <div key={user.id} className="relative group">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedQuickUser(user.id);
+                          setQuickPassword('');
+                        }}
+                        className={`w-full p-3 rounded-2xl border text-right transition-all flex flex-col justify-between hover:scale-[1.02] active:scale-[0.98] ${
+                          isSelected
+                            ? 'bg-blue-600/30 border-blue-400 text-white shadow-lg ring-2 ring-blue-500/50'
+                            : 'bg-slate-900/50 border-slate-700/60 hover:border-slate-600 text-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1.5 pl-5">
+                          <img
+                            src={user.avatar}
+                            alt={user.name}
+                            className={`w-7 h-7 rounded-full object-cover ring-2 ${isSelected ? 'ring-blue-400' : 'ring-slate-700'}`}
+                          />
+                          <span className="text-xs font-bold truncate">{user.name}</span>
+                        </div>
+                        <div className="flex items-center justify-between w-full">
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 self-start font-medium border border-slate-700">
+                            {getRoleBadge(user.role)}
+                          </span>
+                          {user.isTempPassword && (
+                            <span className="text-[9px] text-amber-400 font-extrabold bg-amber-950/80 border border-amber-500/30 px-1.5 py-0.5 rounded">
+                              مؤقت 🔑
+                            </span>
+                          )}
+                        </div>
+                      </button>
+
+                      {/* X Delete Button for Quick Login Account */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteFastUser(e, user)}
+                        className="absolute top-2 left-2 p-1 rounded-full bg-slate-800/90 hover:bg-rose-600 text-slate-400 hover:text-white transition-all shadow-md z-10"
+                        title={`حذف وإزالة حساب (${user.name}) من التسجيل السريع`}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   );
                 })}
               </div>

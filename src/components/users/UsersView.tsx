@@ -21,7 +21,7 @@ import {
   Edit3,
   BarChart2
 } from 'lucide-react';
-import { UserAccount, Deal, UserRole } from '../../types';
+import { UserAccount, Deal, UserRole, ViewType } from '../../types';
 import { getRoleLabel, getRoleBadge, hasUserCreationPermission } from '../../data/mockData';
 import { getLocalizedRoleLabel } from '../../utils/i18n';
 
@@ -52,6 +52,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<UserRole>('sales_engineer');
   const [canCreateUsers, setCanCreateUsers] = useState(false);
+  const [tempPassword, setTempPassword] = useState('Pass@2026');
   const [authCode, setAuthCode] = useState('CRM-2026');
   const [allowedPages, setAllowedPages] = useState<ViewType[]>(['dashboard', 'contacts', 'deals', 'tasks', 'reports', 'users', 'settings']);
 
@@ -63,6 +64,8 @@ export const UsersView: React.FC<UsersViewProps> = ({
   const [editingRole, setEditingRole] = useState<UserRole>('sales_engineer');
   const [editingCanCreate, setEditingCanCreate] = useState(false);
   const [editingAllowedPages, setEditingAllowedPages] = useState<ViewType[]>(['dashboard', 'contacts', 'deals', 'tasks', 'reports', 'users', 'settings']);
+  const [editingTempPassword, setEditingTempPassword] = useState('');
+  const [editingIsTempPassword, setEditingIsTempPassword] = useState(true);
 
   const ALL_SYSTEM_PAGES: { id: ViewType; labelAr: string; labelEn: string }[] = [
     { id: 'dashboard', labelAr: '📊 لوحة التحكم والمؤشرات', labelEn: '📊 Dashboard' },
@@ -102,6 +105,8 @@ export const UsersView: React.FC<UsersViewProps> = ({
       return;
     }
 
+    const initialTempPass = tempPassword.trim() || 'Pass@2026';
+
     onAddUser({
       name: name.trim(),
       email: email.trim(),
@@ -119,14 +124,21 @@ export const UsersView: React.FC<UsersViewProps> = ({
       managerFeedback: 'موظف جديد تحت فترة التقييم والتجربة.',
       stagnantDealsCount: 0,
       canCreateUsers: canCreateUsers || role === 'admin' || role === 'sales_manager',
-      allowedPages: allowedPages.length > 0 ? allowedPages : ['dashboard', 'contacts', 'deals', 'tasks', 'reports', 'users', 'settings']
+      allowedPages: allowedPages.length > 0 ? allowedPages : ['dashboard', 'contacts', 'deals', 'tasks', 'reports', 'users', 'settings'],
+      tempPassword: initialTempPass,
+      isTempPassword: true
     });
 
     setName('');
     setEmail('');
     setPhone('');
+    setTempPassword('Pass@2026');
     setShowAddForm(false);
-    onTriggerToast('تم إضافة الموظف بنجاح 🎉', `تم اعتماد التسجيل ومنح الصلاحيات للموظف الجديد: ${name}`, 'success');
+    onTriggerToast(
+      'تم إضافة الموظف بنجاح 🎉',
+      `تم إنشاء الحساب بكلمة مرور مؤقتة: (${initialTempPass}). سيُطلب من الموظف تغييرها عند أول دخول.`,
+      'success'
+    );
   };
 
   const handleOpenAudit = (user: UserAccount) => {
@@ -137,6 +149,8 @@ export const UsersView: React.FC<UsersViewProps> = ({
     setEditingRole(user.role);
     setEditingCanCreate(user.canCreateUsers || user.role === 'admin' || user.role === 'sales_manager');
     setEditingAllowedPages(user.allowedPages && user.allowedPages.length > 0 ? user.allowedPages : ['dashboard', 'contacts', 'deals', 'tasks', 'reports', 'users', 'settings']);
+    setEditingTempPassword(user.tempPassword || 'Pass@2026');
+    setEditingIsTempPassword(user.isTempPassword ?? true);
   };
 
   const handleSaveFeedback = () => {
@@ -148,12 +162,14 @@ export const UsersView: React.FC<UsersViewProps> = ({
         allowedPages: editingAllowedPages,
         managerFeedback: editingFeedback,
         targetPeriod: editingPeriod,
-        monthlyTarget: typeof editingTarget === 'number' && editingTarget >= 0 ? editingTarget : selectedUserForAudit.monthlyTarget
+        monthlyTarget: typeof editingTarget === 'number' && editingTarget >= 0 ? editingTarget : selectedUserForAudit.monthlyTarget,
+        tempPassword: editingTempPassword.trim() || selectedUserForAudit.tempPassword || 'Pass@2026',
+        isTempPassword: editingIsTempPassword
       };
       onUpdateUser?.(updatedUser);
       onTriggerToast(
         'تم حفظ التقييم والصلاحيات ✨',
-        `تم تحديث التارجت والصفحات المتاحة للموظف ${updatedUser.name} بنجاح.`,
+        `تم تحديث التارجت وكلمة المرور المؤقتة للموظف ${updatedUser.name} بنجاح.`,
         'success'
       );
       setSelectedUserForAudit(null);
@@ -467,6 +483,49 @@ export const UsersView: React.FC<UsersViewProps> = ({
                   })}
                 </div>
               </div>
+
+              {/* Temp Password Control in Audit Modal */}
+              <div className="pt-3 border-t border-slate-200/80 dark:border-slate-700/80 space-y-3 bg-amber-50/40 dark:bg-amber-950/20 p-3 rounded-2xl border border-amber-200/60 dark:border-amber-800/40">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-extrabold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                    <Lock className="w-4 h-4 text-amber-600" />
+                    <span>إعادة ضبط كلمة المرور المؤقتة للحساب (Temp Password):</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newTemp = `Pass@${Math.floor(1000 + Math.random() * 9000)}`;
+                      setEditingTempPassword(newTemp);
+                      setEditingIsTempPassword(true);
+                    }}
+                    className="text-[10px] bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 font-bold px-2 py-0.5 rounded-lg hover:bg-amber-300 transition-all"
+                  >
+                    🎲 توليد كلمة مرور عشوائية
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                  <div>
+                    <input
+                      type="text"
+                      value={editingTempPassword}
+                      onChange={(e) => setEditingTempPassword(e.target.value)}
+                      placeholder="Pass@2026"
+                      className="w-full px-3 py-2 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-white dark:bg-slate-900 text-xs font-mono font-bold text-amber-900 dark:text-amber-200 focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+
+                  <label className="flex items-center gap-2 text-xs font-bold text-amber-900 dark:text-amber-200 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editingIsTempPassword}
+                      onChange={(e) => setEditingIsTempPassword(e.target.checked)}
+                      className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
+                    />
+                    <span>إلزام الموظف بتغيير كلمة المرور عند أول دخول</span>
+                  </label>
+                </div>
+              </div>
             </div>
 
             {/* Manager Review & Feedback Section */}
@@ -580,6 +639,21 @@ export const UsersView: React.FC<UsersViewProps> = ({
                 <option value="sales">🚀 مندوب مبيعات (Sales Rep)</option>
                 <option value="viewer">📊 مراقب ومحلل تقارير (Data Analyst)</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                <span>كلمة المرور المؤقتة 🔑</span>
+                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">يتوجب تغييرها</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={tempPassword}
+                onChange={(e) => setTempPassword(e.target.value)}
+                placeholder="Pass@2026"
+                className="w-full px-3 py-2 rounded-xl border border-amber-300 dark:border-amber-700/70 bg-amber-50/50 dark:bg-amber-950/20 text-xs font-mono font-bold text-amber-900 dark:text-amber-200 focus:ring-2 focus:ring-amber-500"
+              />
             </div>
           </div>
 

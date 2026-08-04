@@ -586,6 +586,8 @@ export default function App() {
         <AuthView
           existingUsers={users}
           onLogin={handleLogin}
+          onUpdateUser={handleUpdateUser}
+          onDeleteUser={handleDeleteUser}
           onRegister={(newUser) => {
             setUsers((prev) => [newUser, ...prev]);
             handleLogin(newUser);

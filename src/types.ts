@@ -84,6 +84,8 @@ export interface UserAccount {
   stagnantDealsCount?: number; // عدد الصفقات الراكدة أو المتأخرة
   canCreateUsers?: boolean; // صلاحية إنشاء وتسجيل حسابات موظفين ومستخدمين جدد
   allowedPages?: ViewType[]; // الصفحات وقطاعات النظام المسموح للمستخدم بالوصول إليها
+  tempPassword?: string; // كلمة المرور المؤقتة للحساب
+  isTempPassword?: boolean; // هل كلمة المرور مؤقتة ويتوجب تغييرها عند الدخول
 }
 
 export interface NotificationItem {
