@@ -52,6 +52,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<UserRole>('sales_engineer');
   const [canCreateUsers, setCanCreateUsers] = useState(false);
+  const [authCode, setAuthCode] = useState('CRM-2026');
   const [allowedPages, setAllowedPages] = useState<ViewType[]>(['dashboard', 'contacts', 'deals', 'tasks', 'reports', 'users', 'settings']);
 
   // Rep Evaluation Audit State
@@ -88,6 +89,19 @@ export const UsersView: React.FC<UsersViewProps> = ({
     e.preventDefault();
     if (!name.trim() || !email.trim()) return;
 
+    // Security Authorization Enforcement
+    const isUserAuthorized = hasUserCreationPermission(currentUser);
+    const isValidCode = authCode.trim().toUpperCase() === 'CRM-2026' || authCode.trim().toUpperCase() === 'ADMIN-2026';
+
+    if (!isUserAuthorized && !isValidCode) {
+      onTriggerToast(
+        'تنبيه سياسة الأمان 🔒',
+        '💡 تطبيقاً لسياسة الأمان: لا يمكن تسجيل أي موظف أو حساب جديد إلا بموافقة المدير العام أو من يمتلك صلاحية (تسجيل جديد). الرمز الافتراضي للتجربة: CRM-2026.',
+        'info'
+      );
+      return;
+    }
+
     onAddUser({
       name: name.trim(),
       email: email.trim(),
@@ -112,7 +126,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
     setEmail('');
     setPhone('');
     setShowAddForm(false);
-    onTriggerToast('تم إضافة الموظف بنجاح', `تم منح الصلاحيات وتحديد الصفحات للموظف الجديد: ${name}`, 'success');
+    onTriggerToast('تم إضافة الموظف بنجاح 🎉', `تم اعتماد التسجيل ومنح الصلاحيات للموظف الجديد: ${name}`, 'success');
   };
 
   const handleOpenAudit = (user: UserAccount) => {
@@ -619,6 +633,29 @@ export const UsersView: React.FC<UsersViewProps> = ({
                   </label>
                 );
               })}
+            </div>
+          </div>
+
+          {/* Security Authorization Policy Notice & Code Input */}
+          <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 space-y-2">
+            <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-extrabold text-xs">
+              <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>اعتماد وتصريح تسجيل الحسابات الجديدة (سياسة الأمان)</span>
+            </div>
+            <p className="text-xs text-amber-900 dark:text-amber-200 leading-relaxed font-semibold">
+              💡 تطبيقاً لسياسة الأمان: لا يمكن تسجيل أي موظف أو حساب جديد إلا بموافقة المدير العام أو من يمتلك صلاحية (تسجيل جديد). الرمز الافتراضي للتجربة: <b>CRM-2026</b>.
+            </p>
+            <div className="pt-1">
+              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                رمز موافقة وتصريح الإدارة:
+              </label>
+              <input
+                type="text"
+                value={authCode}
+                onChange={(e) => setAuthCode(e.target.value)}
+                placeholder="CRM-2026"
+                className="w-full sm:w-64 px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-xs font-mono font-bold text-amber-800 dark:text-amber-300 focus:ring-2 focus:ring-amber-500"
+              />
             </div>
           </div>
 

@@ -34,7 +34,8 @@ export const AuthView: React.FC<AuthViewProps> = ({
   // Login Form States
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-  const [selectedQuickUser, setSelectedQuickUser] = useState<string | null>(existingUsers[0]?.id || null);
+  const [selectedQuickUser, setSelectedQuickUser] = useState<string | null>(null);
+  const [quickPassword, setQuickPassword] = useState('');
 
   // Register Form States
   const [regName, setRegName] = useState('');
@@ -50,7 +51,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
   const handleQuickLogin = (user: UserAccount) => {
     onTriggerToast(
       `مرحباً بك مجدداً، ${user.name}! 👋`,
-      `تم تسجيل الدخول بنجاح بحساب "${getRoleLabel(user.role)}"`,
+      `تم التحقق من كلمة المرور وتسجيل الدخول بنجاح بحساب "${getRoleLabel(user.role)}"`,
       'success'
     );
     onLogin(user);
@@ -61,6 +62,11 @@ export const AuthView: React.FC<AuthViewProps> = ({
     e.preventDefault();
     if (!loginEmail.trim()) {
       onTriggerToast('تنبيه', 'يرجى إدخال البريد الإلكتروني أو اسم المستخدم.', 'error');
+      return;
+    }
+
+    if (!loginPassword.trim()) {
+      onTriggerToast('كلمة المرور مطلوبة 🔑', 'يرجى إدخال كلمة المرور الخاصة بحسابك للدخول.', 'error');
       return;
     }
 
@@ -102,7 +108,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
   const handleRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!regName.trim() || !regEmail.trim() || !regPassword.trim()) {
-      onTriggerToast('خطأ في التسجيل', 'يرجى تعبئة كافة الحقول المطلوبة لإنشاء الحساب.', 'error');
+      onTriggerToast('خطأ في التسجيل', 'يرجى تعبئة كافة الحقول المطلوبة لإنشاء الحساب بما فيها كلمة المرور.', 'error');
       return;
     }
 
@@ -112,8 +118,8 @@ export const AuthView: React.FC<AuthViewProps> = ({
 
     if (!isValidAuthCode && !isManagerAuthorized) {
       onTriggerToast(
-        'تنبيه الصلاحيات 🔒',
-        'لا يمكن إنشاء حسابات جديدة إلا بموافقة أو كود تصريح من المدير العام أو من تم منحه صلاحية (تسجيل حسابات جديدة). يرجى إدخال كود موافقة الإدارة (CRM-2026) أو اختيار المدير المعتمد.',
+        'تنبيه سياسة الأمان 🔒',
+        '💡 تطبيقاً لسياسة الأمان: لا يمكن تسجيل أي موظف أو حساب جديد إلا بموافقة المدير العام أو من يمتلك صلاحية (تسجيل جديد). الرمز الافتراضي للتجربة: CRM-2026.',
         'error'
       );
       return;
@@ -209,38 +215,118 @@ export const AuthView: React.FC<AuthViewProps> = ({
             {activeTab === 'login' && (
               <div className="space-y-6 animate-in fade-in duration-300">
                 
-                {/* Quick One-Click Login Section */}
+                {/* Quick Login Section with Password Enforcement */}
                 <div className="space-y-3">
-                  <label className="block text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                    <span>تسجيل دخول سريع بالحسابات المسجلة في النظام:</span>
+                  <label className="block text-xs font-bold text-slate-300 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                      <span>اختر الحساب للتسجيل السريع:</span>
+                    </span>
+                    <span className="text-[10px] text-amber-300 bg-amber-950/60 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">
+                      يتطلب كلمة مرور 🔑
+                    </span>
                   </label>
+
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                    {existingUsers.map((user) => (
-                      <button
-                        key={user.id}
-                        type="button"
-                        onClick={() => handleQuickLogin(user)}
-                        className={`p-3 rounded-2xl border text-right transition-all flex flex-col justify-between hover:scale-[1.02] active:scale-[0.98] ${
-                          selectedQuickUser === user.id
-                            ? 'bg-blue-600/20 border-blue-500/80 text-white shadow-md'
-                            : 'bg-slate-900/50 border-slate-700/60 hover:border-slate-600 text-slate-300'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <img
-                            src={user.avatar}
-                            alt={user.name}
-                            className="w-7 h-7 rounded-full object-cover ring-2 ring-blue-500/40"
-                          />
-                          <span className="text-xs font-bold truncate">{user.name}</span>
-                        </div>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 self-start font-medium border border-slate-700">
-                          {getRoleBadge(user.role)}
-                        </span>
-                      </button>
-                    ))}
+                    {existingUsers.map((user) => {
+                      const isSelected = selectedQuickUser === user.id;
+                      return (
+                        <button
+                          key={user.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedQuickUser(user.id);
+                            setQuickPassword('');
+                          }}
+                          className={`p-3 rounded-2xl border text-right transition-all flex flex-col justify-between hover:scale-[1.02] active:scale-[0.98] ${
+                            isSelected
+                              ? 'bg-blue-600/30 border-blue-400 text-white shadow-lg ring-2 ring-blue-500/50'
+                              : 'bg-slate-900/50 border-slate-700/60 hover:border-slate-600 text-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <img
+                              src={user.avatar}
+                              alt={user.name}
+                              className={`w-7 h-7 rounded-full object-cover ring-2 ${isSelected ? 'ring-blue-400' : 'ring-slate-700'}`}
+                            />
+                            <span className="text-xs font-bold truncate">{user.name}</span>
+                          </div>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 self-start font-medium border border-slate-700">
+                            {getRoleBadge(user.role)}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
+
+                  {/* Password Entry Box for Selected Quick User */}
+                  {(() => {
+                    const selectedObj = existingUsers.find(u => u.id === selectedQuickUser);
+                    if (!selectedObj) return null;
+
+                    return (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          if (!quickPassword.trim()) {
+                            onTriggerToast(
+                              'كلمة المرور مطلوبة 🔑',
+                              `يرجى إدخال كلمة المرور لحساب (${selectedObj.name}) لإنهاء الدخول.`,
+                              'error'
+                            );
+                            return;
+                          }
+                          handleQuickLogin(selectedObj);
+                        }}
+                        className="p-4 rounded-2xl bg-blue-950/40 border border-blue-500/40 space-y-3 mt-3 animate-in fade-in"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <img
+                              src={selectedObj.avatar}
+                              alt={selectedObj.name}
+                              className="w-8 h-8 rounded-full object-cover ring-2 ring-blue-400"
+                            />
+                            <div>
+                              <p className="text-xs font-black text-white">{selectedObj.name}</p>
+                              <p className="text-[10px] text-blue-300">{getRoleBadge(selectedObj.role)}</p>
+                            </div>
+                          </div>
+                          <span className="text-[10px] bg-blue-500/20 text-blue-200 border border-blue-400/30 px-2.5 py-1 rounded-full font-extrabold flex items-center gap-1">
+                            <Lock className="w-3 h-3 text-amber-400" />
+                            أدخل كلمة المرور
+                          </span>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                            كلمة المرور الخاصة بـ ({selectedObj.name}):
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="password"
+                              required
+                              autoFocus
+                              value={quickPassword}
+                              onChange={(e) => setQuickPassword(e.target.value)}
+                              placeholder="أدخل كلمة المرور..."
+                              className="w-full pl-4 pr-10 py-2.5 bg-slate-900 border border-blue-500/50 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-400 shadow-inner"
+                            />
+                            <Lock className="w-4 h-4 text-blue-400 absolute right-3 top-3" />
+                          </div>
+                        </div>
+
+                        <button
+                          type="submit"
+                          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-black shadow-lg shadow-blue-600/30 transition-all flex items-center justify-center gap-2"
+                        >
+                          <LogIn className="w-4 h-4" />
+                          <span>تأكيد ودخول بحساب {selectedObj.name}</span>
+                        </button>
+                      </form>
+                    );
+                  })()}
                 </div>
 
                 <div className="relative flex items-center justify-center my-4">
