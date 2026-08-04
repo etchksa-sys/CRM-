@@ -69,22 +69,9 @@ export default function App() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [users, setUsers] = useState<UserAccount[]>([{
-    id: 'admin-1',
-    name: 'مدير النظام (Admin)',
-    email: 'admin@crmpro.com',
-    role: 'admin',
-    phone: '+966 50 000 0000',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
-    monthlyTarget: 1000000,
-    targetPeriod: 'yearly',
-    revenueGenerated: 0,
-    dealsCount: 0,
-    conversionRate: 100,
-    kpiScore: 100,
-    status: 'active',
-    canCreateUsers: true
-  }]);
+  const [users, setUsers] = useState<UserAccount[]>(() => 
+    loadFromStorage(STORAGE_KEYS.USERS, initialUsers)
+  );
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [monthlyReports] = useState(initialMonthlyReports);
 

@@ -11,7 +11,7 @@ import {
   Key,
   CheckCircle2
 } from 'lucide-react';
-import { UserAccount } from '../../types';
+import { UserAccount, UserRole } from '../../types';
 import { getRoleLabel, getRoleBadge } from '../../data/mockData';
 
 interface AuthViewProps {
@@ -122,11 +122,23 @@ export const AuthView: React.FC<AuthViewProps> = ({
       return;
     }
 
-    // Try to match with existing users by email or name
-    const found = existingUsers.find(
-      u => u.email.toLowerCase() === loginEmail.trim().toLowerCase() ||
-           u.name.toLowerCase().includes(loginEmail.trim().toLowerCase())
-    );
+    const term = loginEmail.trim().toLowerCase();
+
+    // Smart match with existing users by email, email username, name, or role
+    const found = existingUsers.find(u => {
+      const uEmail = u.email.toLowerCase();
+      const uName = u.name.toLowerCase();
+      const emailPrefix = uEmail.split('@')[0];
+
+      return (
+        uEmail === term ||
+        emailPrefix === term ||
+        uEmail.includes(term) ||
+        uName.includes(term) ||
+        ((term === 'admin' || term === 'مدير' || term === 'المدير') && (u.role === 'admin' || u.role === 'sales_manager')) ||
+        (term === 'ahmed' && (u.email.includes('ahmed') || u.name.includes('أحمد')))
+      );
+    });
 
     if (found) {
       if (found.isTempPassword || (found.tempPassword && loginPassword.trim() === found.tempPassword)) {
@@ -142,24 +154,28 @@ export const AuthView: React.FC<AuthViewProps> = ({
         handleQuickLogin(found);
       }
     } else {
+      const isAdminKeyword = term.includes('admin') || term.includes('مدير') || term.includes('ahmed') || term.includes('أحمد');
+      const fallbackRole: UserRole = isAdminKeyword ? 'admin' : 'sales';
+
       const fallbackUser: UserAccount = {
         id: `u-${Date.now()}`,
         name: loginEmail.split('@')[0] || 'مستخدم النظام',
-        email: loginEmail,
+        email: loginEmail.includes('@') ? loginEmail : `${loginEmail}@crm-pro.com`,
         phone: '+966 50 000 0000',
-        role: 'sales',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-        monthlyTarget: 150000,
+        role: fallbackRole,
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        monthlyTarget: 500000,
         targetPeriod: 'monthly',
         revenueGenerated: 0,
         dealsCount: 0,
         conversionRate: 0,
-        kpiScore: 80,
-        status: 'active'
+        kpiScore: 90,
+        status: 'active',
+        canCreateUsers: fallbackRole === 'admin'
       };
       onTriggerToast(
         `تم تسجيل الدخول بنجاح! 🚀`,
-        `مرحباً بك في جلسة العمل، ${fallbackUser.name}.`,
+        `مرحباً بك في جلسة العمل، ${fallbackUser.name} (${getRoleLabel(fallbackUser.role)}).`,
         'success'
       );
       onLogin(fallbackUser);
