@@ -63,24 +63,70 @@ export const syncItemToSupabase = async (
   if (!client) return { success: false, error: 'Could not initialize Supabase client' };
 
   try {
-    if (action === 'upsert') {
-      const snakeItem = toSnakeCase(item);
-      const { error } = await client.from(tableName).upsert(snakeItem);
-      if (error) {
-        console.error(`Supabase upsert error in ${tableName}:`, error);
-        return { success: false, error: error.message || JSON.stringify(error) };
-      }
-    } else if (action === 'delete') {
+    if (action === 'delete') {
       const { error } = await client.from(tableName).delete().eq(idKey, item[idKey]);
       if (error) {
         console.error(`Supabase delete error in ${tableName}:`, error);
         return { success: false, error: error.message || JSON.stringify(error) };
       }
+      return { success: true };
     }
-    return { success: true };
+
+    let snakeItem = toSnakeCase(item);
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (attempts < maxAttempts) {
+      attempts++;
+      const { error } = await client.from(tableName).upsert(snakeItem);
+      if (!error) {
+        return { success: true };
+      }
+
+      console.error(`Supabase upsert attempt ${attempts} error in ${tableName}:`, error);
+      const errMsg = error.message || JSON.stringify(error);
+
+      // Handle missing column errors gracefully by stripping the missing column and retrying
+      const missingColumnMatch = errMsg.match(/Could not find the '([^']+)' column/i);
+      if (missingColumnMatch && missingColumnMatch[1]) {
+        const missingCol = missingColumnMatch[1];
+        console.warn(`[Supabase Sync] Table '${tableName}' is missing column '${missingCol}'. Omitting key and retrying...`);
+        delete snakeItem[missingCol];
+        continue;
+      }
+
+      return { success: false, error: errMsg };
+    }
+
+    return { success: false, error: 'Max retry attempts reached' };
   } catch (err: any) {
     console.error(`Supabase sync exception in ${tableName}:`, err);
     return { success: false, error: err?.message || 'Unknown network error' };
+  }
+};
+
+const upsertWithFallback = async (client: any, tableName: string, items: any[]) => {
+  if (!items || items.length === 0) return;
+  let snakeItems = items.map(toSnakeCase);
+  let attempts = 0;
+  while (attempts < 10) {
+    attempts++;
+    const { error } = await client.from(tableName).upsert(snakeItems);
+    if (!error) return;
+    const errMsg = error.message || JSON.stringify(error);
+    const missingColumnMatch = errMsg.match(/Could not find the '([^']+)' column/i);
+    if (missingColumnMatch && missingColumnMatch[1]) {
+      const missingCol = missingColumnMatch[1];
+      console.warn(`[Supabase Seed] Table '${tableName}' is missing column '${missingCol}'. Omitting key and retrying...`);
+      snakeItems = snakeItems.map(item => {
+        const copy = { ...item };
+        delete copy[missingCol];
+        return copy;
+      });
+      continue;
+    }
+    console.error(`Supabase seed error on ${tableName}:`, error);
+    break;
   }
 };
 
@@ -96,21 +142,11 @@ export const seedSupabaseData = async (initialData: {
   if (!client) return false;
 
   try {
-    if (initialData.contacts?.length) {
-      await client.from('contacts').upsert(initialData.contacts.map(toSnakeCase));
-    }
-    if (initialData.deals?.length) {
-      await client.from('deals').upsert(initialData.deals.map(toSnakeCase));
-    }
-    if (initialData.tasks?.length) {
-      await client.from('tasks').upsert(initialData.tasks.map(toSnakeCase));
-    }
-    if (initialData.users?.length) {
-      await client.from('users').upsert(initialData.users.map(toSnakeCase));
-    }
-    if (initialData.notifications?.length) {
-      await client.from('notifications').upsert(initialData.notifications.map(toSnakeCase));
-    }
+    await upsertWithFallback(client, 'contacts', initialData.contacts);
+    await upsertWithFallback(client, 'deals', initialData.deals);
+    await upsertWithFallback(client, 'tasks', initialData.tasks);
+    await upsertWithFallback(client, 'users', initialData.users);
+    await upsertWithFallback(client, 'notifications', initialData.notifications);
     return true;
   } catch (err) {
     console.error('Supabase seeding error:', err);

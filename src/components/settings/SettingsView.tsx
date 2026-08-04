@@ -41,6 +41,19 @@ CREATE TABLE IF NOT EXISTS public.contacts (
   timeline JSONB DEFAULT '[]'::jsonb
 );
 
+ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS name TEXT;
+ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS company TEXT;
+ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS source TEXT;
+ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS status TEXT;
+ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS avatar TEXT;
+ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS assigned_to TEXT;
+ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS created_at TEXT;
+ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS timeline JSONB DEFAULT '[]'::jsonb;
+
 -- 2. Deals Table
 CREATE TABLE IF NOT EXISTS public.deals (
   id TEXT PRIMARY KEY,
@@ -57,6 +70,18 @@ CREATE TABLE IF NOT EXISTS public.deals (
   notes TEXT
 );
 
+ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS contact_id TEXT;
+ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS contact_name TEXT;
+ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS company TEXT;
+ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS value NUMERIC DEFAULT 0;
+ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS probability INT4 DEFAULT 50;
+ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS stage TEXT;
+ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS expected_close_date TEXT;
+ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS assigned_to TEXT;
+ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS priority TEXT;
+ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS notes TEXT;
+
 -- 3. Tasks Table
 CREATE TABLE IF NOT EXISTS public.tasks (
   id TEXT PRIMARY KEY,
@@ -70,6 +95,16 @@ CREATE TABLE IF NOT EXISTS public.tasks (
   related_to_name TEXT,
   assigned_to TEXT
 );
+
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS due_date TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS due_time TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS priority TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT false;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS related_to_type TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS related_to_id TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS related_to_name TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS assigned_to TEXT;
 
 -- 4. Users Table
 CREATE TABLE IF NOT EXISTS public.users (
@@ -92,6 +127,23 @@ CREATE TABLE IF NOT EXISTS public.users (
   can_create_users BOOLEAN DEFAULT true
 );
 
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS name TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS role TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS avatar TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS deals_count INT4 DEFAULT 0;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS revenue_generated NUMERIC DEFAULT 0;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS conversion_rate NUMERIC DEFAULT 100;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS monthly_target NUMERIC;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS target_period TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS kpi_score NUMERIC DEFAULT 100;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS last_active_date TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS manager_feedback TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS stagnant_deals_count INT4 DEFAULT 0;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS can_create_users BOOLEAN DEFAULT true;
+
 -- 5. Notifications Table
 CREATE TABLE IF NOT EXISTS public.notifications (
   id TEXT PRIMARY KEY,
@@ -102,6 +154,13 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   type TEXT,
   link_target TEXT
 );
+
+ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS message TEXT;
+ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS time TEXT;
+ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS read BOOLEAN DEFAULT false;
+ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS type TEXT;
+ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS link_target TEXT;
 
 -- Enable Row Level Security (RLS) and grant full public access for anon role
 ALTER TABLE public.contacts ENABLE ROW LEVEL SECURITY;
