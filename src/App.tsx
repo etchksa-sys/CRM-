@@ -704,6 +704,8 @@ export default function App() {
                 deals={deals}
                 contacts={contacts}
                 users={users}
+                currentUser={authUser || users[0]}
+                onUpdateCurrentUser={handleUpdateUser}
                 language={language}
               />
             )}

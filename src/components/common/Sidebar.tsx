@@ -155,24 +155,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* User Account Pill */}
           <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <img 
-                src={currentUser.avatar} 
-                alt={currentUser.name} 
-                className="w-9 h-9 rounded-full object-cover ring-2 ring-blue-500/30 shrink-0"
-              />
+            <button
+              type="button"
+              onClick={() => {
+                onSelectView('settings');
+                onCloseMobile();
+              }}
+              className="flex items-center gap-2.5 min-w-0 text-right flex-1 hover:opacity-80 transition-opacity"
+              title={language === 'en' ? 'Edit Profile & Settings' : 'تعديل الملف الشخصي والصورة'}
+            >
+              <div className="relative shrink-0">
+                <img 
+                  src={currentUser.avatar} 
+                  alt={currentUser.name} 
+                  className="w-9 h-9 rounded-full object-cover ring-2 ring-blue-500/30"
+                />
+                <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-blue-600 border border-white dark:border-slate-800 flex items-center justify-center text-[8px] text-white">
+                  ⚙️
+                </span>
+              </div>
               <div className="min-w-0">
-                <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{currentUser.name}</p>
+                <p className="text-xs font-bold text-slate-800 dark:text-white truncate hover:text-blue-600 transition-colors">{currentUser.name}</p>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
                   {getLocalizedRoleLabel(currentUser.role, language)}
                 </p>
               </div>
-            </div>
+            </button>
             <button 
               type="button"
               onClick={onLogout}
               title={language === 'en' ? 'Logout' : 'تسجيل الخروج أو تبديل الحساب'}
-              className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+              className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors shrink-0"
             >
               <LogOut className="w-4 h-4" />
             </button>

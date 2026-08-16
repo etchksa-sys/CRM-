@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
-import { Settings as SettingsIcon, RefreshCw, Download, Upload, Moon, Sun, Globe, Bell, ShieldCheck, Database, CheckCircle2, AlertTriangle, Sparkles, Cloud, ExternalLink, Code, Copy, Check } from 'lucide-react';
-import { resetAllStorageToDefaults } from '../../data/mockData';
+import React, { useState, useEffect } from 'react';
+import { Settings as SettingsIcon, RefreshCw, Download, Upload, Moon, Sun, Globe, Bell, ShieldCheck, Database, CheckCircle2, AlertTriangle, Sparkles, User, Camera, Mail, Phone, Lock, Save, Image as ImageIcon } from 'lucide-react';
+import { resetAllStorageToDefaults, getRoleBadge, getRoleLabel } from '../../data/mockData';
 import { Deal, Contact, UserAccount, Task, NotificationItem } from '../../types';
 import { exportFullSystemToExcel } from '../../utils/excelExport';
-import { isSupabaseConfigured, getSupabaseConfig, saveSupabaseConfig } from '../../lib/supabase';
-import { seedSupabaseData } from '../../lib/supabaseService';
 
 interface SettingsViewProps {
   theme: 'light' | 'dark';
@@ -15,8 +13,21 @@ interface SettingsViewProps {
   users?: UserAccount[];
   tasks?: Task[];
   notifications?: NotificationItem[];
+  currentUser?: UserAccount;
+  onUpdateCurrentUser?: (updatedUser: UserAccount) => void;
   language?: string;
 }
+
+const PRESET_AVATARS = [
+  { id: '1', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250', label: 'صورة 1' },
+  { id: '2', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=250', label: 'صورة 2' },
+  { id: '3', url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=250', label: 'صورة 3' },
+  { id: '4', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=250', label: 'صورة 4' },
+  { id: '5', url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=250', label: 'صورة 5' },
+  { id: '6', url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=250', label: 'صورة 6' },
+  { id: '7', url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=250', label: 'صورة 7' },
+  { id: '8', url: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=250', label: 'صورة 8' },
+];
 
 const SUPABASE_SQL_CODE = `-- ==========================================================
 -- Supabase SQL Schema for CRM Pro
@@ -193,8 +204,80 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   users = [],
   tasks = [],
   notifications = [],
+  currentUser,
+  onUpdateCurrentUser,
   language = 'ar'
 }) => {
+  // Profile Settings Form State
+  const [profileName, setProfileName] = useState(currentUser?.name || '');
+  const [profileEmail, setProfileEmail] = useState(currentUser?.email || '');
+  const [profilePhone, setProfilePhone] = useState(currentUser?.phone || '');
+  const [profileAvatar, setProfileAvatar] = useState(currentUser?.avatar || '');
+  const [profilePassword, setProfilePassword] = useState(currentUser?.tempPassword || '');
+  const [profileNotes, setProfileNotes] = useState(currentUser?.managerFeedback || '');
+
+  // Keep state synced with currentUser if currentUser changes
+  useEffect(() => {
+    if (currentUser) {
+      setProfileName(currentUser.name || '');
+      setProfileEmail(currentUser.email || '');
+      setProfilePhone(currentUser.phone || '');
+      setProfileAvatar(currentUser.avatar || '');
+      setProfilePassword(currentUser.tempPassword || '');
+      setProfileNotes(currentUser.managerFeedback || '');
+    }
+  }, [currentUser]);
+
+  // Handle Local Photo File Upload
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        onTriggerToast(
+          language === 'en' ? 'File Too Large ⚠️' : 'حجم الصورة كبير جداً ⚠️',
+          language === 'en' ? 'Please choose an image under 5MB.' : 'يرجى اختيار صورة بحجم أصل من 5 ميجابايت.',
+          'info'
+        );
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setProfileAvatar(reader.result);
+          onTriggerToast(
+            language === 'en' ? 'Photo Loaded 📸' : 'تم اختيار الصورة بنجاح 📸',
+            language === 'en' ? 'Click Save Changes to apply to your profile.' : 'اضغط على حفظ التعديلات لتحديث حسابك والصورة.',
+            'success'
+          );
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Submit Profile Form
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser || !onUpdateCurrentUser) return;
+
+    const updatedUser: UserAccount = {
+      ...currentUser,
+      name: profileName.trim() || currentUser.name,
+      email: profileEmail.trim() || currentUser.email,
+      phone: profilePhone.trim() || currentUser.phone,
+      avatar: profileAvatar.trim() || currentUser.avatar,
+      tempPassword: profilePassword.trim() || currentUser.tempPassword,
+      managerFeedback: profileNotes.trim()
+    };
+
+    onUpdateCurrentUser(updatedUser);
+    onTriggerToast(
+      language === 'en' ? 'Profile Updated 🎉' : 'تم حفظ الملف الشخصي بنجاح 🎉',
+      language === 'en' ? 'Your personal details and profile picture have been updated.' : `تم حفظ وتحديث بيانات وقوالب الحساب الخاص بـ (${updatedUser.name}).`,
+      'success'
+    );
+  };
+
   const handleResetDemoData = () => {
     if (confirm(language === 'en' ? 'Are you sure you want to reset all demo data to default?' : 'هل أنت متأكد من إعادة ضبط كافة العينات والبيانات إلى الوضع الأصلي (الافتراضي)؟ سيتم حذف أي إضافات جديدة قمت بها.')) {
       resetAllStorageToDefaults();
@@ -236,13 +319,213 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div>
           <h3 className="text-base font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
             <SettingsIcon className="w-5 h-5 text-slate-600 dark:text-slate-300" /> 
-            {language === 'en' ? 'System Settings & Data Management' : 'إعدادات النظام وإدارة البيانات النسخ الاحتياطي'}
+            {language === 'en' ? 'System Settings & Data Management' : 'إعدادات النظام وإدارة البيانات والملف الشخصي'}
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            {language === 'en' ? 'Manage system options, data export, dark mode & preferences' : 'إدارة خيارات النظام، تصدير البيانات والنسخ الاحتياطي، الوضع الليلي، والتنبيهات التلقائية'}
+            {language === 'en' ? 'Manage system options, profile photo, dark mode & preferences' : 'إدارة الملف الشخصي، تغيير الصورة والمعلومات، التصدير، الوضع الليلي والتفضيلات'}
           </p>
         </div>
       </div>
+
+      {/* Profile Settings Card */}
+      {currentUser && (
+        <div className="p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 shadow-sm space-y-6">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-700">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2.5 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                <User className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-extrabold text-slate-800 dark:text-white">
+                  {language === 'en' ? 'User Profile & Avatar Settings' : 'إعدادات الملف الشخصي وصورة الحساب (My Profile)'}
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {language === 'en' ? 'Update your display name, contact info, login credentials and photo' : 'قم بتعديل اسمك، بريدك الإلكتروني، رقم الجوال، والصورة الشخصية الخاصة بك'}
+                </p>
+              </div>
+            </div>
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+              {getRoleBadge(currentUser.role)} {getRoleLabel(currentUser.role)}
+            </span>
+          </div>
+
+          <form onSubmit={handleSaveProfile} className="space-y-6">
+            
+            {/* Avatar Selection & Preview */}
+            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-700/60 space-y-4">
+              <label className="block text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                <Camera className="w-4 h-4 text-blue-500" />
+                <span>{language === 'en' ? 'Profile Picture / Avatar' : 'الصورة الشخصية (Profile Picture)'}</span>
+              </label>
+
+              <div className="flex flex-col sm:flex-row items-center gap-5">
+                {/* Current Avatar Circle */}
+                <div className="relative group shrink-0">
+                  <img
+                    src={profileAvatar || currentUser.avatar}
+                    alt={currentUser.name}
+                    className="w-20 h-20 rounded-full object-cover ring-4 ring-blue-500/30 dark:ring-blue-400/40 shadow-md"
+                  />
+                  <div className="absolute inset-0 rounded-full bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white pointer-events-none">
+                    <Camera className="w-6 h-6" />
+                  </div>
+                </div>
+
+                <div className="flex-1 w-full space-y-3">
+                  {/* Upload File or Enter URL */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="cursor-pointer px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold shadow-sm transition-all flex items-center gap-2">
+                      <Upload className="w-4 h-4" />
+                      <span>{language === 'en' ? 'Upload Photo from Device' : 'رفع صورة من جهازك 📁'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        className="hidden"
+                      />
+                    </label>
+
+                    <div className="flex-1 min-w-[200px] relative">
+                      <input
+                        type="url"
+                        value={profileAvatar}
+                        onChange={(e) => setProfileAvatar(e.target.value)}
+                        placeholder={language === 'en' ? 'Or paste image URL link...' : 'أو ألصق رابط صورة مباشر (URL)...'}
+                        className="w-full pl-3 pr-9 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-blue-500"
+                      />
+                      <ImageIcon className="w-4 h-4 text-slate-400 absolute right-3 top-2.5" />
+                    </div>
+                  </div>
+
+                  {/* Preset Avatars Gallery */}
+                  <div>
+                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-2">
+                      {language === 'en' ? 'Or pick a professional preset avatar:' : 'أو اختر صورة رمزية من القائمة الجاهزة:'}
+                    </p>
+                    <div className="flex items-center gap-2.5 overflow-x-auto pb-1">
+                      {PRESET_AVATARS.map((preset) => {
+                        const isSelected = profileAvatar === preset.url;
+                        return (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            onClick={() => setProfileAvatar(preset.url)}
+                            className={`relative shrink-0 rounded-full transition-transform hover:scale-110 ${
+                              isSelected ? 'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-slate-900 scale-105' : 'opacity-80 hover:opacity-100'
+                            }`}
+                          >
+                            <img
+                              src={preset.url}
+                              alt={preset.label}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                            {isSelected && (
+                              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold">
+                                ✓
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Form Fields Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {language === 'en' ? 'Full Name' : 'الاسم الكامل *'}
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={profileName}
+                    onChange={(e) => setProfileName(e.target.value)}
+                    className="w-full pl-3 pr-9 py-2.5 bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-blue-500"
+                  />
+                  <User className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {language === 'en' ? 'Email Address' : 'البريد الإلكتروني *'}
+                </label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    required
+                    value={profileEmail}
+                    onChange={(e) => setProfileEmail(e.target.value)}
+                    className="w-full pl-3 pr-9 py-2.5 bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-blue-500"
+                  />
+                  <Mail className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {language === 'en' ? 'Phone Number' : 'رقم الجوال'}
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={profilePhone}
+                    onChange={(e) => setProfilePhone(e.target.value)}
+                    placeholder="+966 50 000 0000"
+                    className="w-full pl-3 pr-9 py-2.5 bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-blue-500"
+                  />
+                  <Phone className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {language === 'en' ? 'Password / Security Pin' : 'كلمة المرور / الرمز السري'}
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={profilePassword}
+                    onChange={(e) => setProfilePassword(e.target.value)}
+                    placeholder="كلمة المرور..."
+                    className="w-full pl-3 pr-9 py-2.5 bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-blue-500"
+                  />
+                  <Lock className="w-4 h-4 text-amber-500 absolute right-3 top-3" />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                {language === 'en' ? 'Job Title / Bio Notes' : 'المسمى الوظيفي أو الملاحظات الشخصية'}
+              </label>
+              <textarea
+                rows={2}
+                value={profileNotes}
+                onChange={(e) => setProfileNotes(e.target.value)}
+                placeholder={language === 'en' ? 'Add any notes about your responsibilities...' : 'اكتب نبذة أو ملاحظات عن المهام والمسؤوليات...'}
+                className="w-full p-3 bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-blue-500 resize-none"
+              />
+            </div>
+
+            {/* Save Button */}
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-extrabold shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                <span>{language === 'en' ? 'Save Profile Changes' : 'حفظ التعديلات والبيانات الشخصية'}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Section 1: Appearance & RTL Layout */}
       <div className="p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 shadow-sm space-y-4">
